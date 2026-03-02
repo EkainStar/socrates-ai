@@ -1,0 +1,1999 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sócrates AI — La Academia</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Cinzel:wght@400;600&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet">
+
+<style>
+/* ═══════════════════════════════════════════
+   VARIABLES & RESET
+═══════════════════════════════════════════ */
+:root {
+  --gold: #C9A84C;
+  --gold-light: #E8D5A3;
+  --gold-dark: #8B6914;
+  --marble: #F5F0E8;
+  --marble-dark: #E8DDD0;
+  --obsidian: #0A0A0F;
+  --obsidian-mid: #12121A;
+  --obsidian-light: #1C1C2A;
+  --stone: #2A2A3A;
+  --text-primary: #F0EAD6;
+  --text-secondary: #A09070;
+  --text-muted: #605840;
+  --accent-blue: #4A7FA5;
+  --danger: #A04040;
+  --success: #406040;
+  --radius: 2px;
+  --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { height: 100%; }
+
+body {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  background: var(--obsidian);
+  color: var(--text-primary);
+  min-height: 100vh;
+  overflow-x: hidden;
+  cursor: default;
+}
+
+/* ═══════════════════════════════════════════
+   CANVAS BACKGROUND
+═══════════════════════════════════════════ */
+#bg-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* ═══════════════════════════════════════════
+   SCREENS
+═══════════════════════════════════════════ */
+.screen {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.6s ease;
+}
+.screen.active {
+  opacity: 1;
+  pointer-events: all;
+}
+
+/* ═══════════════════════════════════════════
+   AUTH SCREEN
+═══════════════════════════════════════════ */
+#auth-screen {
+  background: radial-gradient(ellipse at center, #1a1a2e 0%, var(--obsidian) 70%);
+}
+
+.auth-container {
+  width: 100%;
+  max-width: 420px;
+  padding: 20px;
+  animation: fadeInUp 0.8s ease forwards;
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.auth-logo {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.auth-logo .owl {
+  font-size: 48px;
+  display: block;
+  margin-bottom: 12px;
+  animation: float 4s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+.auth-logo h1 {
+  font-family: 'Cinzel', serif;
+  font-size: 32px;
+  font-weight: 600;
+  color: var(--gold);
+  letter-spacing: 4px;
+  text-transform: uppercase;
+}
+
+.auth-logo p {
+  font-size: 14px;
+  color: var(--text-secondary);
+  font-style: italic;
+  margin-top: 6px;
+  letter-spacing: 1px;
+}
+
+.auth-card {
+  background: var(--obsidian-mid);
+  border: 1px solid rgba(201, 168, 76, 0.2);
+  padding: 36px;
+  position: relative;
+  overflow: hidden;
+}
+
+.auth-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+}
+
+.auth-tabs {
+  display: flex;
+  margin-bottom: 28px;
+  border-bottom: 1px solid rgba(201, 168, 76, 0.15);
+}
+
+.auth-tab {
+  flex: 1;
+  padding: 10px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-family: 'Cinzel', serif;
+  font-size: 12px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: var(--transition);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.auth-tab.active {
+  color: var(--gold);
+  border-bottom-color: var(--gold);
+}
+
+.auth-form { display: none; }
+.auth-form.active { display: block; }
+
+.field {
+  margin-bottom: 18px;
+}
+
+.field label {
+  display: block;
+  font-family: 'Cinzel', serif;
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.field input {
+  width: 100%;
+  background: var(--obsidian-light);
+  border: 1px solid rgba(201, 168, 76, 0.15);
+  color: var(--text-primary);
+  padding: 12px 14px;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 16px;
+  outline: none;
+  transition: var(--transition);
+  border-radius: var(--radius);
+}
+
+.field input:focus {
+  border-color: rgba(201, 168, 76, 0.5);
+  background: rgba(201, 168, 76, 0.05);
+}
+
+.btn-primary {
+  width: 100%;
+  background: linear-gradient(135deg, var(--gold-dark), var(--gold));
+  border: none;
+  color: var(--obsidian);
+  padding: 14px;
+  font-family: 'Cinzel', serif;
+  font-size: 12px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: var(--transition);
+  position: relative;
+  overflow: hidden;
+  margin-top: 8px;
+  border-radius: var(--radius);
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(201, 168, 76, 0.3);
+}
+
+.btn-primary:active { transform: translateY(0); }
+
+.btn-primary::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.1), transparent);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.btn-primary:hover::after { opacity: 1; }
+
+.auth-error {
+  color: #E07070;
+  font-size: 13px;
+  margin-top: 12px;
+  text-align: center;
+  min-height: 20px;
+  font-style: italic;
+}
+
+.lang-toggle {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: rgba(201, 168, 76, 0.1);
+  border: 1px solid rgba(201, 168, 76, 0.3);
+  color: var(--gold);
+  padding: 6px 14px;
+  font-family: 'Cinzel', serif;
+  font-size: 11px;
+  letter-spacing: 2px;
+  cursor: pointer;
+  transition: var(--transition);
+  border-radius: var(--radius);
+  z-index: 100;
+}
+.lang-toggle:hover { background: rgba(201, 168, 76, 0.2); }
+
+/* ═══════════════════════════════════════════
+   CHAT SCREEN
+═══════════════════════════════════════════ */
+#chat-screen {
+  background: var(--obsidian);
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: stretch;
+}
+
+/* Header */
+.chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 24px;
+  border-bottom: 1px solid rgba(201, 168, 76, 0.1);
+  background: var(--obsidian-mid);
+  z-index: 20;
+  position: relative;
+}
+
+.chat-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(201,168,76,0.3), transparent);
+}
+
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-brand .icon { font-size: 22px; }
+
+.header-brand h2 {
+  font-family: 'Cinzel', serif;
+  font-size: 16px;
+  color: var(--gold);
+  letter-spacing: 3px;
+}
+
+.provider-badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  padding: 4px 10px;
+  background: rgba(201, 168, 76, 0.08);
+  border: 1px solid rgba(201, 168, 76, 0.2);
+  color: var(--text-secondary);
+  border-radius: 20px;
+  transition: var(--transition);
+}
+
+.provider-badge.active { color: var(--gold); border-color: rgba(201,168,76,0.4); }
+.provider-badge.groq { color: #7EB8D4; border-color: rgba(126,184,212,0.4); }
+.provider-badge.mistral { color: #D49E7E; border-color: rgba(212,158,126,0.4); }
+.provider-badge.error { color: #D47E7E; border-color: rgba(212,126,126,0.4); }
+
+.header-actions { display: flex; gap: 8px; align-items: center; }
+
+.btn-icon {
+  background: none;
+  border: 1px solid rgba(201, 168, 76, 0.15);
+  color: var(--text-secondary);
+  width: 34px; height: 34px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: var(--transition);
+  font-size: 16px;
+  border-radius: var(--radius);
+}
+.btn-icon:hover { color: var(--gold); border-color: rgba(201,168,76,0.4); background: rgba(201,168,76,0.05); }
+
+/* Layout */
+.chat-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  height: calc(100vh - 57px);
+}
+
+/* Sidebar */
+.sidebar {
+  width: 280px;
+  min-width: 280px;
+  background: var(--obsidian-mid);
+  border-right: 1px solid rgba(201, 168, 76, 0.08);
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.3s ease;
+  overflow: hidden;
+}
+
+.sidebar.collapsed { transform: translateX(-280px); margin-left: -280px; }
+
+.sidebar-section {
+  padding: 20px;
+  border-bottom: 1px solid rgba(201, 168, 76, 0.06);
+}
+
+.sidebar-title {
+  font-family: 'Cinzel', serif;
+  font-size: 9px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 14px;
+}
+
+/* UBM Display */
+.ubm-item {
+  margin-bottom: 12px;
+}
+
+.ubm-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: var(--text-muted);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.ubm-value {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  font-style: italic;
+}
+
+.ubm-level {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.level-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+.level-dot.basico { background: #6B8F6B; }
+.level-dot.intermedio { background: #8F8B6B; }
+.level-dot.avanzado { background: var(--gold); }
+
+.strategy-tag {
+  display: inline-block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  padding: 3px 8px;
+  background: rgba(201, 168, 76, 0.08);
+  border: 1px solid rgba(201, 168, 76, 0.15);
+  color: var(--gold);
+  border-radius: 2px;
+  letter-spacing: 1px;
+}
+
+.contradiction-alert {
+  background: rgba(160, 64, 64, 0.1);
+  border: 1px solid rgba(160, 64, 64, 0.3);
+  padding: 8px 10px;
+  font-size: 12px;
+  color: #E09090;
+  font-style: italic;
+  margin-top: 6px;
+  border-radius: var(--radius);
+}
+
+/* Sidebar bottom */
+.sidebar-bottom {
+  margin-top: auto;
+  padding: 16px 20px;
+  border-top: 1px solid rgba(201, 168, 76, 0.06);
+}
+
+.btn-sidebar {
+  width: 100%;
+  background: none;
+  border: 1px solid rgba(201, 168, 76, 0.15);
+  color: var(--text-secondary);
+  padding: 9px;
+  font-family: 'Cinzel', serif;
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: var(--transition);
+  margin-bottom: 8px;
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.btn-sidebar:hover { color: var(--gold); border-color: rgba(201,168,76,0.3); }
+.btn-sidebar.danger:hover { color: #E07070; border-color: rgba(220,112,112,0.3); }
+
+/* Main chat area */
+.chat-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Messages */
+.messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 32px 40px;
+  scroll-behavior: smooth;
+}
+
+.messages::-webkit-scrollbar { width: 4px; }
+.messages::-webkit-scrollbar-track { background: transparent; }
+.messages::-webkit-scrollbar-thumb { background: rgba(201, 168, 76, 0.2); border-radius: 2px; }
+
+.message {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 28px;
+  animation: msgIn 0.4s ease forwards;
+  opacity: 0;
+}
+
+@keyframes msgIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.message.user { flex-direction: row-reverse; }
+
+.msg-avatar {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+  border: 1px solid rgba(201, 168, 76, 0.2);
+  background: var(--obsidian-light);
+}
+
+.message.socrates .msg-avatar {
+  background: linear-gradient(135deg, var(--gold-dark), rgba(201,168,76,0.3));
+  border-color: var(--gold);
+}
+
+.msg-content {
+  max-width: 68%;
+  flex-direction: column;
+}
+
+.msg-bubble {
+  padding: 14px 18px;
+  font-size: 17px;
+  line-height: 1.7;
+  font-family: 'Cormorant Garamond', serif;
+  border-radius: var(--radius);
+  position: relative;
+}
+
+.message.socrates .msg-bubble {
+  background: var(--obsidian-light);
+  border: 1px solid rgba(201, 168, 76, 0.15);
+  color: var(--text-primary);
+  border-top-left-radius: 0;
+}
+
+.message.socrates .msg-bubble::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, var(--gold), transparent);
+  opacity: 0.4;
+}
+
+.message.user .msg-bubble {
+  background: rgba(201, 168, 76, 0.08);
+  border: 1px solid rgba(201, 168, 76, 0.2);
+  color: var(--gold-light);
+  border-top-right-radius: 0;
+  font-style: italic;
+}
+
+.msg-strategy {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: var(--text-muted);
+  letter-spacing: 1px;
+  margin-top: 6px;
+  padding-left: 4px;
+  text-transform: uppercase;
+}
+
+/* Typing indicator */
+.typing-indicator {
+  display: none;
+  align-items: center;
+  gap: 16px;
+  padding: 0 40px;
+  margin-bottom: 20px;
+}
+.typing-indicator.visible { display: flex; }
+
+.typing-dots {
+  display: flex;
+  gap: 5px;
+  padding: 12px 16px;
+  background: var(--obsidian-light);
+  border: 1px solid rgba(201, 168, 76, 0.1);
+  border-radius: var(--radius);
+}
+
+.typing-dot {
+  width: 6px; height: 6px;
+  background: var(--gold);
+  border-radius: 50%;
+  opacity: 0.4;
+  animation: typingPulse 1.4s ease-in-out infinite;
+}
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typingPulse {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+
+/* Input area */
+.chat-input-area {
+  padding: 20px 40px 24px;
+  background: var(--obsidian-mid);
+  border-top: 1px solid rgba(201, 168, 76, 0.08);
+  position: relative;
+}
+
+.chat-input-area::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(201,168,76,0.2), transparent);
+}
+
+.input-wrapper {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+#message-input {
+  flex: 1;
+  background: var(--obsidian-light);
+  border: 1px solid rgba(201, 168, 76, 0.15);
+  color: var(--text-primary);
+  padding: 14px 18px;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 17px;
+  resize: none;
+  outline: none;
+  min-height: 52px;
+  max-height: 140px;
+  line-height: 1.5;
+  transition: var(--transition);
+  border-radius: var(--radius);
+}
+
+#message-input:focus {
+  border-color: rgba(201, 168, 76, 0.4);
+  background: rgba(201, 168, 76, 0.03);
+}
+
+#message-input::placeholder { color: var(--text-muted); font-style: italic; }
+
+.btn-send {
+  width: 52px; height: 52px;
+  background: linear-gradient(135deg, var(--gold-dark), var(--gold));
+  border: none;
+  color: var(--obsidian);
+  font-size: 18px;
+  cursor: pointer;
+  transition: var(--transition);
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: var(--radius);
+}
+.btn-send:hover { transform: scale(1.05); box-shadow: 0 4px 16px rgba(201,168,76,0.3); }
+.btn-send:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+.input-hint {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.5px;
+}
+
+/* Example prompts */
+.examples-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.example-pill {
+  background: rgba(201, 168, 76, 0.06);
+  border: 1px solid rgba(201, 168, 76, 0.12);
+  color: var(--text-secondary);
+  padding: 6px 12px;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 13px;
+  font-style: italic;
+  cursor: pointer;
+  transition: var(--transition);
+  border-radius: 20px;
+}
+.example-pill:hover { background: rgba(201,168,76,0.12); color: var(--gold-light); }
+
+/* Welcome message */
+.welcome-msg {
+  text-align: center;
+  padding: 60px 40px;
+  animation: fadeInUp 1s ease;
+}
+
+.welcome-msg .quote {
+  font-size: 22px;
+  font-style: italic;
+  color: var(--text-secondary);
+  line-height: 1.8;
+  max-width: 500px;
+  margin: 0 auto 20px;
+}
+
+.welcome-msg .quote-author {
+  font-family: 'Cinzel', serif;
+  font-size: 11px;
+  letter-spacing: 3px;
+  color: var(--text-muted);
+}
+
+/* ═══════════════════════════════════════════
+   SETTINGS PANEL (slide-over)
+═══════════════════════════════════════════ */
+.panel-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 50;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+  backdrop-filter: blur(4px);
+}
+.panel-overlay.open { opacity: 1; pointer-events: all; }
+
+.settings-panel {
+  position: fixed;
+  top: 0; right: 0; bottom: 0;
+  width: 440px;
+  background: var(--obsidian-mid);
+  border-left: 1px solid rgba(201, 168, 76, 0.15);
+  z-index: 51;
+  transform: translateX(100%);
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.settings-panel.open { transform: translateX(0); }
+
+.panel-header {
+  padding: 24px 28px;
+  border-bottom: 1px solid rgba(201, 168, 76, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.panel-header h3 {
+  font-family: 'Cinzel', serif;
+  font-size: 14px;
+  letter-spacing: 3px;
+  color: var(--gold);
+}
+
+.panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 28px;
+}
+
+.panel-body::-webkit-scrollbar { width: 3px; }
+.panel-body::-webkit-scrollbar-thumb { background: rgba(201,168,76,0.2); }
+
+.panel-section {
+  margin-bottom: 32px;
+}
+
+.panel-section-title {
+  font-family: 'Cinzel', serif;
+  font-size: 10px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(201,168,76,0.08);
+}
+
+/* API Keys list */
+.api-keys-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.api-key-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--obsidian-light);
+  border: 1px solid rgba(201, 168, 76, 0.1);
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  animation: msgIn 0.3s ease;
+}
+
+.api-key-item .key-index {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-muted);
+  width: 20px;
+  flex-shrink: 0;
+}
+
+.api-key-item .key-value {
+  flex: 1;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.api-key-item .key-status {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  flex-shrink: 0;
+}
+.api-key-item .key-status.active { background: #6B9B6B; }
+.api-key-item .key-status.exhausted { background: #9B6B6B; }
+.api-key-item .key-status.pending { background: var(--text-muted); }
+
+.api-key-item .btn-remove {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px;
+  transition: var(--transition);
+  flex-shrink: 0;
+}
+.api-key-item .btn-remove:hover { color: #E07070; }
+
+.add-key-row {
+  display: flex;
+  gap: 8px;
+}
+
+.add-key-row input {
+  flex: 1;
+  background: var(--obsidian-light);
+  border: 1px solid rgba(201, 168, 76, 0.15);
+  color: var(--text-primary);
+  padding: 10px 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  outline: none;
+  transition: var(--transition);
+  border-radius: var(--radius);
+}
+.add-key-row input:focus { border-color: rgba(201,168,76,0.4); }
+.add-key-row input::placeholder { color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+
+.btn-add {
+  background: rgba(201, 168, 76, 0.1);
+  border: 1px solid rgba(201, 168, 76, 0.3);
+  color: var(--gold);
+  padding: 10px 16px;
+  font-family: 'Cinzel', serif;
+  font-size: 11px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: var(--transition);
+  border-radius: var(--radius);
+  white-space: nowrap;
+}
+.btn-add:hover { background: rgba(201,168,76,0.2); }
+
+.keys-info {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-style: italic;
+  margin-top: 8px;
+}
+
+/* Account info */
+.account-info {
+  background: var(--obsidian-light);
+  border: 1px solid rgba(201,168,76,0.1);
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  margin-bottom: 12px;
+}
+
+.account-info .email {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.btn-danger {
+  background: none;
+  border: 1px solid rgba(160, 64, 64, 0.3);
+  color: #E07070;
+  padding: 10px 16px;
+  font-family: 'Cinzel', serif;
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: var(--transition);
+  border-radius: var(--radius);
+  width: 100%;
+}
+.btn-danger:hover { background: rgba(160,64,64,0.1); }
+
+/* ═══════════════════════════════════════════
+   TOAST NOTIFICATIONS
+═══════════════════════════════════════════ */
+.toast-container {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+
+.toast {
+  background: var(--obsidian-mid);
+  border: 1px solid rgba(201,168,76,0.3);
+  color: var(--text-primary);
+  padding: 10px 20px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  animation: toastIn 0.3s ease;
+  white-space: nowrap;
+  border-radius: var(--radius);
+}
+
+.toast.error { border-color: rgba(160,64,64,0.4); color: #E09090; }
+.toast.success { border-color: rgba(64,96,64,0.4); color: #90C090; }
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ═══════════════════════════════════════════
+   LOADING SCREEN
+═══════════════════════════════════════════ */
+#loading-screen {
+  background: var(--obsidian);
+  z-index: 100;
+}
+
+.loading-content {
+  text-align: center;
+}
+
+.loading-spinner {
+  width: 48px; height: 48px;
+  border: 2px solid rgba(201,168,76,0.1);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 20px;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.loading-content p {
+  font-family: 'Cinzel', serif;
+  font-size: 12px;
+  letter-spacing: 3px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+/* ═══════════════════════════════════════════
+   RESPONSIVE
+═══════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .sidebar { position: absolute; z-index: 15; height: 100%; }
+  .messages { padding: 20px 16px; }
+  .chat-input-area { padding: 14px 16px 18px; }
+  .settings-panel { width: 100%; }
+  .examples-row { display: none; }
+  .msg-content { max-width: 85%; }
+}
+
+/* ═══════════════════════════════════════════
+   DECORATIVE ELEMENTS
+═══════════════════════════════════════════ */
+.greek-divider {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 14px;
+  letter-spacing: 8px;
+  margin: 8px 0;
+  opacity: 0.4;
+}
+</style>
+</head>
+<body>
+
+<!-- Background Canvas -->
+<canvas id="bg-canvas"></canvas>
+
+<!-- Language Toggle -->
+<button class="lang-toggle" onclick="toggleLang()" id="lang-btn">EN</button>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toast-container"></div>
+
+<!-- ═══════════════════════════════ LOADING -->
+<div class="screen active" id="loading-screen">
+  <div class="loading-content">
+    <div class="loading-spinner"></div>
+    <p data-i18n="loading">Iniciando la Academia</p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ AUTH -->
+<div class="screen" id="auth-screen">
+  <div class="auth-container">
+    <div class="auth-logo">
+      <span class="owl">🦉</span>
+      <h1>Sócrates AI</h1>
+      <p data-i18n="auth.subtitle">La Academia — Donde el conocimiento se examina</p>
+    </div>
+
+    <div class="auth-card">
+      <div class="auth-tabs">
+        <button class="auth-tab active" onclick="switchTab('login')" data-i18n="auth.login">Entrar</button>
+        <button class="auth-tab" onclick="switchTab('register')" data-i18n="auth.register">Registrarse</button>
+      </div>
+
+      <!-- Login -->
+      <div class="auth-form active" id="login-form">
+        <div class="field">
+          <label data-i18n="auth.email">Correo electrónico</label>
+          <input type="email" id="login-email" placeholder="tu@email.com" autocomplete="email">
+        </div>
+        <div class="field">
+          <label data-i18n="auth.password">Contraseña</label>
+          <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
+        </div>
+        <button class="btn-primary" onclick="login()" id="login-btn">
+          <span data-i18n="auth.enter">Entrar a la Academia</span>
+        </button>
+        <div class="auth-error" id="login-error"></div>
+      </div>
+
+      <!-- Register -->
+      <div class="auth-form" id="register-form">
+        <div class="field">
+          <label data-i18n="auth.email">Correo electrónico</label>
+          <input type="email" id="reg-email" placeholder="tu@email.com" autocomplete="email">
+        </div>
+        <div class="field">
+          <label data-i18n="auth.password">Contraseña</label>
+          <input type="password" id="reg-password" placeholder="Mínimo 8 caracteres" autocomplete="new-password">
+        </div>
+        <div class="field">
+          <label data-i18n="auth.confirm">Confirmar contraseña</label>
+          <input type="password" id="reg-confirm" placeholder="Repite la contraseña" autocomplete="new-password">
+        </div>
+        <button class="btn-primary" onclick="register()" id="register-btn">
+          <span data-i18n="auth.create">Crear cuenta</span>
+        </button>
+        <div class="auth-error" id="register-error"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ CHAT -->
+<div class="screen" id="chat-screen">
+
+  <!-- Header -->
+  <div class="chat-header">
+    <div class="header-brand">
+      <span class="icon">🏛️</span>
+      <h2>SÓCRATES AI</h2>
+    </div>
+    <div class="provider-badge" id="provider-badge">— sin actividad —</div>
+    <div class="header-actions">
+      <button class="btn-icon" onclick="toggleSidebar()" title="Panel de creencias">📊</button>
+      <button class="btn-icon" onclick="openSettings()" title="Ajustes">⚙️</button>
+    </div>
+  </div>
+
+  <!-- Body -->
+  <div class="chat-body">
+
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+      <div class="sidebar-section">
+        <div class="sidebar-title" data-i18n="sidebar.beliefs">Modelo de Creencias</div>
+
+        <div class="ubm-item">
+          <div class="ubm-label" data-i18n="sidebar.level">Nivel filosófico</div>
+          <div class="ubm-value ubm-level">
+            <span class="level-dot" id="level-dot"></span>
+            <span id="ubm-level">—</span>
+          </div>
+        </div>
+
+        <div class="ubm-item">
+          <div class="ubm-label" data-i18n="sidebar.turns">Turnos</div>
+          <div class="ubm-value" id="ubm-turns">0</div>
+        </div>
+
+        <div class="ubm-item">
+          <div class="ubm-label" data-i18n="sidebar.strategy">Última estrategia</div>
+          <div class="ubm-value" id="ubm-strategy">—</div>
+        </div>
+
+        <div class="ubm-item" id="ubm-tesis-container" style="display:none">
+          <div class="ubm-label" data-i18n="sidebar.thesis">Tesis principal</div>
+          <div class="ubm-value" id="ubm-tesis"></div>
+        </div>
+
+        <div class="ubm-item" id="ubm-contradiction-container" style="display:none">
+          <div class="ubm-label" data-i18n="sidebar.contradiction">Contradicción</div>
+          <div class="contradiction-alert" id="ubm-contradiction"></div>
+        </div>
+      </div>
+
+      <div class="sidebar-bottom">
+        <button class="btn-sidebar" onclick="resetConversation()">
+          <span>↺</span> <span data-i18n="sidebar.reset">Nueva conversación</span>
+        </button>
+        <button class="btn-sidebar danger" onclick="logout()">
+          <span>→</span> <span data-i18n="sidebar.logout">Cerrar sesión</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Main chat -->
+    <div class="chat-main">
+      <div class="messages" id="messages">
+        <div class="welcome-msg" id="welcome-msg">
+          <div class="quote" data-i18n="welcome.quote">"Solo sé que no sé nada.<br>¿Y tú, qué sabes realmente?"</div>
+          <div class="quote-author">— SÓCRATES</div>
+        </div>
+      </div>
+
+      <!-- Typing -->
+      <div class="typing-indicator" id="typing">
+        <div class="msg-avatar" style="width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#8B6914,rgba(201,168,76,0.3));border:1px solid #C9A84C">🏺</div>
+        <div class="typing-dots">
+          <div class="typing-dot"></div>
+          <div class="typing-dot"></div>
+          <div class="typing-dot"></div>
+        </div>
+      </div>
+
+      <!-- Input -->
+      <div class="chat-input-area">
+        <div class="examples-row" id="examples-row">
+          <button class="example-pill" onclick="useExample(this)">El libre albedrío no existe</button>
+          <button class="example-pill" onclick="useExample(this)">La felicidad es el único fin válido</button>
+          <button class="example-pill" onclick="useExample(this)">Está bien mentir para hacer el bien</button>
+          <button class="example-pill" onclick="useExample(this)">La justicia y la ley son lo mismo</button>
+        </div>
+        <div class="input-wrapper">
+          <textarea
+            id="message-input"
+            rows="1"
+            placeholder="Expón tu idea o creencia filosófica..."
+            onkeydown="handleKey(event)"
+            oninput="autoResize(this)"
+          ></textarea>
+          <button class="btn-send" id="send-btn" onclick="sendMessage()">↑</button>
+        </div>
+        <div class="input-hint" data-i18n="input.hint">Enter para enviar · Shift+Enter para nueva línea</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Settings Panel -->
+<div class="panel-overlay" id="panel-overlay" onclick="closeSettings()"></div>
+<div class="settings-panel" id="settings-panel">
+  <div class="panel-header">
+    <h3 data-i18n="settings.title">CONFIGURACIÓN</h3>
+    <button class="btn-icon" onclick="closeSettings()">✕</button>
+  </div>
+  <div class="panel-body">
+
+    <!-- API Keys -->
+    <div class="panel-section">
+      <div class="panel-section-title" data-i18n="settings.keys">Claves API de Groq</div>
+      <div class="api-keys-list" id="api-keys-list"></div>
+      <div class="add-key-row">
+        <input type="password" id="new-key-input" placeholder="gsk_..." onkeydown="if(event.key==='Enter')addApiKey()">
+        <button class="btn-add" onclick="addApiKey()" data-i18n="settings.add">Añadir</button>
+      </div>
+      <div class="keys-info" id="keys-info"></div>
+    </div>
+
+    <div class="greek-divider">· · · ⌘ · · ·</div>
+
+    <!-- Account -->
+    <div class="panel-section">
+      <div class="panel-section-title" data-i18n="settings.account">Cuenta</div>
+      <div class="account-info">
+        <div class="ubm-label" data-i18n="settings.loggedAs">Conectado como</div>
+        <div class="email" id="account-email">—</div>
+      </div>
+      <button class="btn-danger" onclick="logout()" data-i18n="settings.logout">Cerrar sesión</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+   FIREBASE + APP LOGIC
+═══════════════════════════════════════════ -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc, updateDoc }
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+// ─── FIREBASE CONFIG ───────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyCvNAAG_SsgCBnsDkIzeIMVs0dLBXcLYZ8",
+  authDomain: "socrates-ai-d3c9a.firebaseapp.com",
+  projectId: "socrates-ai-d3c9a",
+  storageBucket: "socrates-ai-d3c9a.firebasestorage.app",
+  messagingSenderId: "1078148478383",
+  appId: "1:1078148478383:web:9a21d5ce8b12ab67ca2b5a"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+// ─── SIMPLE ENCRYPTION (XOR + base64) ──────
+// Note: client-side only — keys are encrypted at rest in Firestore
+// but visible during transmission. For production use server-side encryption.
+function encrypt(text) {
+  const key = auth.currentUser?.uid || 'default';
+  let result = '';
+  for (let i = 0; i < text.length; i++) {
+    result += String.fromCharCode(text.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+  }
+  return btoa(result);
+}
+
+function decrypt(encoded) {
+  try {
+    const key = auth.currentUser?.uid || 'default';
+    const text = atob(encoded);
+    let result = '';
+    for (let i = 0; i < text.length; i++) {
+      result += String.fromCharCode(text.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+    }
+    return result;
+  } catch { return ''; }
+}
+
+// ─── STATE ─────────────────────────────────
+let currentUser = null;
+let apiKeys = [];      // decrypted, in-memory only
+let currentKeyIndex = 0;
+let lang = localStorage.getItem('lang') || 'es';
+
+// Conversation state
+let history = [];
+let historyResumen = '';
+let ubm = { tesis: [], contradicciones: [], conceptosSinDefinir: [], ultimoTipo: null, turnos: 0, nivel: 'basico' };
+let isSending = false;
+
+// ─── I18N ───────────────────────────────────
+const translations = {
+  es: {
+    'loading': 'Iniciando la Academia',
+    'auth.subtitle': 'La Academia — Donde el conocimiento se examina',
+    'auth.login': 'Entrar',
+    'auth.register': 'Registrarse',
+    'auth.email': 'Correo electrónico',
+    'auth.password': 'Contraseña',
+    'auth.confirm': 'Confirmar contraseña',
+    'auth.enter': 'Entrar a la Academia',
+    'auth.create': 'Crear cuenta',
+    'sidebar.beliefs': 'Modelo de Creencias',
+    'sidebar.level': 'Nivel filosófico',
+    'sidebar.turns': 'Turnos',
+    'sidebar.strategy': 'Última estrategia',
+    'sidebar.thesis': 'Tesis principal',
+    'sidebar.contradiction': 'Contradicción detectada',
+    'sidebar.reset': 'Nueva conversación',
+    'sidebar.logout': 'Cerrar sesión',
+    'welcome.quote': '"Solo sé que no sé nada.<br>¿Y tú, qué sabes realmente?"',
+    'input.hint': 'Enter para enviar · Shift+Enter para nueva línea',
+    'settings.title': 'CONFIGURACIÓN',
+    'settings.keys': 'Claves API de Groq',
+    'settings.add': 'Añadir',
+    'settings.account': 'Cuenta',
+    'settings.loggedAs': 'Conectado como',
+    'settings.logout': 'Cerrar sesión',
+    'level.basico': 'Básico',
+    'level.intermedio': 'Intermedio',
+    'level.avanzado': 'Avanzado',
+    'strategy.definicion': 'definición',
+    'strategy.contraejemplo': 'contraejemplo',
+    'strategy.premisa_implicita': 'premisa implícita',
+    'strategy.reduccion_absurdo': 'reducción al absurdo',
+    'strategy.coherencia_interna': 'coherencia interna',
+    'strategy.implicacion_moral': 'implicación moral',
+    'strategy.perspectiva_alternativa': 'perspectiva alternativa',
+    'strategy.fundamento': 'fundamento',
+    'no.keys': 'Sin claves API. Añade una clave de Groq para comenzar.',
+    'keys.count': (n, max) => `${n}/${max} claves · usando la ${currentKeyIndex + 1}`,
+    'welcome.socrates': 'Bienvenido. Soy Sócrates. ¿Sobre qué deseas reflexionar hoy?',
+    'reset.msg': 'Conversación reiniciada. ¿Sobre qué deseas reflexionar hoy?',
+    'err.no.keys': 'No hay claves API disponibles. Añade una en Ajustes (⚙️).',
+    'err.exhausted': 'Todas las claves API están agotadas por hoy. Inténtalo mañana.',
+    'err.generic': 'Error al conectar. Revisa tu clave API.',
+    'toast.key.added': 'Clave añadida',
+    'toast.key.removed': 'Clave eliminada',
+    'toast.key.max': 'Máximo 20 claves permitidas',
+    'toast.key.invalid': 'La clave debe empezar por gsk_',
+    'toast.key.duplicate': 'Esta clave ya está añadida',
+    'toast.reset': 'Conversación reiniciada',
+    'placeholder.input': 'Expón tu idea o creencia filosófica...',
+  },
+  en: {
+    'loading': 'Starting the Academy',
+    'auth.subtitle': 'The Academy — Where knowledge is examined',
+    'auth.login': 'Sign In',
+    'auth.register': 'Register',
+    'auth.email': 'Email address',
+    'auth.password': 'Password',
+    'auth.confirm': 'Confirm password',
+    'auth.enter': 'Enter the Academy',
+    'auth.create': 'Create account',
+    'sidebar.beliefs': 'Belief Model',
+    'sidebar.level': 'Philosophical level',
+    'sidebar.turns': 'Turns',
+    'sidebar.strategy': 'Last strategy',
+    'sidebar.thesis': 'Main thesis',
+    'sidebar.contradiction': 'Contradiction detected',
+    'sidebar.reset': 'New conversation',
+    'sidebar.logout': 'Sign out',
+    'welcome.quote': '"I know that I know nothing.<br>And you — what do you truly know?"',
+    'input.hint': 'Enter to send · Shift+Enter for new line',
+    'settings.title': 'SETTINGS',
+    'settings.keys': 'Groq API Keys',
+    'settings.add': 'Add',
+    'settings.account': 'Account',
+    'settings.loggedAs': 'Signed in as',
+    'settings.logout': 'Sign out',
+    'level.basico': 'Basic',
+    'level.intermedio': 'Intermediate',
+    'level.avanzado': 'Advanced',
+    'strategy.definicion': 'definition',
+    'strategy.contraejemplo': 'counterexample',
+    'strategy.premisa_implicita': 'implicit premise',
+    'strategy.reduccion_absurdo': 'reductio ad absurdum',
+    'strategy.coherencia_interna': 'internal coherence',
+    'strategy.implicacion_moral': 'moral implication',
+    'strategy.perspectiva_alternativa': 'alternative perspective',
+    'strategy.fundamento': 'foundation',
+    'no.keys': 'No API keys. Add a Groq key to begin.',
+    'keys.count': (n, max) => `${n}/${max} keys · using #${currentKeyIndex + 1}`,
+    'welcome.socrates': 'Welcome. I am Socrates. What shall we examine today?',
+    'reset.msg': 'Conversation reset. What shall we examine today?',
+    'err.no.keys': 'No API keys available. Add one in Settings (⚙️).',
+    'err.exhausted': 'All API keys are exhausted for today. Try again tomorrow.',
+    'err.generic': 'Connection error. Check your API key.',
+    'toast.key.added': 'Key added',
+    'toast.key.removed': 'Key removed',
+    'toast.key.max': 'Maximum 20 keys allowed',
+    'toast.key.invalid': 'Key must start with gsk_',
+    'toast.key.duplicate': 'This key is already added',
+    'toast.reset': 'Conversation reset',
+    'placeholder.input': 'Share your philosophical idea or belief...',
+  }
+};
+
+function t(key) {
+  const val = translations[lang][key];
+  if (typeof val === 'function') return val;
+  return val || key;
+}
+
+function applyTranslations() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    const val = translations[lang][key];
+    if (val && typeof val === 'string') el.innerHTML = val;
+  });
+  const input = document.getElementById('message-input');
+  if (input) input.placeholder = t('placeholder.input');
+  document.getElementById('lang-btn').textContent = lang === 'es' ? 'EN' : 'ES';
+}
+
+window.toggleLang = function() {
+  lang = lang === 'es' ? 'en' : 'es';
+  localStorage.setItem('lang', lang);
+  applyTranslations();
+  renderKeysInfo();
+};
+
+// ─── SCREEN MANAGEMENT ─────────────────────
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ─── AUTH ───────────────────────────────────
+window.switchTab = function(tab) {
+  document.querySelectorAll('.auth-tab').forEach((t, i) => t.classList.toggle('active', (i === 0) === (tab === 'login')));
+  document.getElementById('login-form').classList.toggle('active', tab === 'login');
+  document.getElementById('register-form').classList.toggle('active', tab !== 'login');
+  document.getElementById('login-error').textContent = '';
+  document.getElementById('register-error').textContent = '';
+};
+
+window.login = async function() {
+  const email = document.getElementById('login-email').value.trim();
+  const pass = document.getElementById('login-password').value;
+  const errEl = document.getElementById('login-error');
+  const btn = document.getElementById('login-btn');
+  if (!email || !pass) { errEl.textContent = lang === 'es' ? 'Completa todos los campos' : 'Fill in all fields'; return; }
+  btn.disabled = true;
+  try {
+    await signInWithEmailAndPassword(auth, email, pass);
+  } catch(e) {
+    errEl.textContent = lang === 'es' ? 'Credenciales incorrectas' : 'Invalid credentials';
+    btn.disabled = false;
+  }
+};
+
+window.register = async function() {
+  const email = document.getElementById('reg-email').value.trim();
+  const pass = document.getElementById('reg-password').value;
+  const confirm = document.getElementById('reg-confirm').value;
+  const errEl = document.getElementById('register-error');
+  const btn = document.getElementById('register-btn');
+  if (!email || !pass || !confirm) { errEl.textContent = lang === 'es' ? 'Completa todos los campos' : 'Fill in all fields'; return; }
+  if (pass !== confirm) { errEl.textContent = lang === 'es' ? 'Las contraseñas no coinciden' : 'Passwords do not match'; return; }
+  if (pass.length < 8) { errEl.textContent = lang === 'es' ? 'Mínimo 8 caracteres' : 'Minimum 8 characters'; return; }
+  btn.disabled = true;
+  try {
+    await createUserWithEmailAndPassword(auth, email, pass);
+  } catch(e) {
+    if (e.code === 'auth/email-already-in-use') {
+      errEl.textContent = lang === 'es' ? 'Este email ya está registrado' : 'Email already in use';
+    } else {
+      errEl.textContent = lang === 'es' ? 'Error al crear cuenta' : 'Error creating account';
+    }
+    btn.disabled = false;
+  }
+};
+
+window.logout = async function() {
+  await signOut(auth);
+};
+
+// ─── FIREBASE USER DATA ─────────────────────
+async function loadUserData(user) {
+  try {
+    const ref = doc(db, 'users', user.uid);
+    const snap = await getDoc(ref);
+    if (snap.exists()) {
+      const data = snap.data();
+      const encryptedKeys = data.apiKeys || [];
+      apiKeys = encryptedKeys.map(k => decrypt(k)).filter(k => k.startsWith('gsk_'));
+      currentKeyIndex = data.currentKeyIndex || 0;
+      if (currentKeyIndex >= apiKeys.length) currentKeyIndex = 0;
+    } else {
+      apiKeys = [];
+      currentKeyIndex = 0;
+      await setDoc(ref, { apiKeys: [], currentKeyIndex: 0, createdAt: Date.now() });
+    }
+  } catch(e) {
+    console.error('Error loading user data', e);
+    apiKeys = [];
+  }
+}
+
+async function saveUserData() {
+  if (!currentUser) return;
+  try {
+    const ref = doc(db, 'users', currentUser.uid);
+    const encryptedKeys = apiKeys.map(k => encrypt(k));
+    await updateDoc(ref, { apiKeys: encryptedKeys, currentKeyIndex });
+  } catch(e) { console.error('Error saving user data', e); }
+}
+
+// ─── API KEYS MANAGEMENT ────────────────────
+const MAX_KEYS = 20;
+
+window.addApiKey = async function() {
+  const input = document.getElementById('new-key-input');
+  const key = input.value.trim();
+  if (!key.startsWith('gsk_')) { toast(t('toast.key.invalid'), 'error'); return; }
+  if (apiKeys.length >= MAX_KEYS) { toast(t('toast.key.max'), 'error'); return; }
+  if (apiKeys.includes(key)) { toast(t('toast.key.duplicate'), 'error'); return; }
+  apiKeys.push(key);
+  input.value = '';
+  await saveUserData();
+  renderApiKeys();
+  toast(t('toast.key.added'), 'success');
+};
+
+window.removeApiKey = async function(idx) {
+  apiKeys.splice(idx, 1);
+  if (currentKeyIndex >= apiKeys.length) currentKeyIndex = Math.max(0, apiKeys.length - 1);
+  await saveUserData();
+  renderApiKeys();
+  toast(t('toast.key.removed'));
+};
+
+function renderApiKeys() {
+  const list = document.getElementById('api-keys-list');
+  list.innerHTML = '';
+  if (!apiKeys.length) {
+    list.innerHTML = `<div style="color:var(--text-muted);font-size:13px;font-style:italic;padding:8px 0">${t('no.keys')}</div>`;
+  } else {
+    apiKeys.forEach((key, i) => {
+      const masked = key.substring(0, 8) + '••••••••••••' + key.slice(-4);
+      const isActive = i === currentKeyIndex;
+      const div = document.createElement('div');
+      div.className = 'api-key-item';
+      div.innerHTML = `
+        <span class="key-index">${i + 1}</span>
+        <span class="key-value" title="${masked}">${masked}</span>
+        <span class="key-status ${isActive ? 'active' : 'pending'}"></span>
+        <button class="btn-remove" onclick="removeApiKey(${i})">✕</button>
+      `;
+      list.appendChild(div);
+    });
+  }
+  renderKeysInfo();
+}
+
+function renderKeysInfo() {
+  const info = document.getElementById('keys-info');
+  if (!info) return;
+  if (apiKeys.length) {
+    const fn = translations[lang]['keys.count'];
+    info.textContent = typeof fn === 'function' ? fn(apiKeys.length, MAX_KEYS) : '';
+  } else {
+    info.textContent = '';
+  }
+}
+
+// ─── GROQ API CALL ──────────────────────────
+async function callGroq(messages, systemPrompt, maxTokens = 300, temperature = 0.7) {
+  if (!apiKeys.length) throw new Error('NO_KEYS');
+
+  const startIndex = currentKeyIndex;
+  let attempts = 0;
+
+  while (attempts < apiKeys.length) {
+    const key = apiKeys[currentKeyIndex];
+    try {
+      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${key}`
+        },
+        body: JSON.stringify({
+          model: 'llama-3.3-70b-versatile',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            ...messages
+          ],
+          max_tokens: maxTokens,
+          temperature: temperature
+        })
+      });
+
+      if (response.status === 429) {
+        // Mark key as exhausted, try next
+        markKeyExhausted(currentKeyIndex);
+        currentKeyIndex = (currentKeyIndex + 1) % apiKeys.length;
+        attempts++;
+        await saveUserData();
+        continue;
+      }
+
+      if (!response.ok) throw new Error('API_ERROR');
+
+      const data = await response.json();
+      updateProviderBadge(currentKeyIndex);
+      return data.choices[0].message.content;
+
+    } catch(e) {
+      if (e.message === 'NO_KEYS') throw e;
+      currentKeyIndex = (currentKeyIndex + 1) % apiKeys.length;
+      attempts++;
+    }
+  }
+
+  throw new Error('ALL_EXHAUSTED');
+}
+
+function markKeyExhausted(idx) {
+  const items = document.querySelectorAll('.api-key-item');
+  if (items[idx]) {
+    const dot = items[idx].querySelector('.key-status');
+    if (dot) { dot.classList.remove('active', 'pending'); dot.classList.add('exhausted'); }
+  }
+}
+
+function updateProviderBadge(keyIdx) {
+  const badge = document.getElementById('provider-badge');
+  badge.textContent = `Groq · Llama 3.3 · key #${keyIdx + 1}`;
+  badge.className = 'provider-badge groq';
+}
+
+// ─── SOCRATIC ENGINE ────────────────────────
+const STRATEGIES = ['definicion','contraejemplo','premisa_implicita','reduccion_absurdo','coherencia_interna','implicacion_moral','perspectiva_alternativa','fundamento'];
+
+const SYSTEM_ANALISIS = `You are a philosophical analyzer. Analyze the user message and return ONLY a valid JSON, no markdown, no extra text.
+Exact structure:
+{
+  "nueva_tesis": "main claim by user, or null",
+  "contradiccion": "contradiction with previous messages, or null",
+  "concepto_sin_definir": "key term user hasn't defined, or null",
+  "tiene_afirmacion_moral": true or false,
+  "nivel_filosofico": "basico|intermedio|avanzado",
+  "estrategia_recomendada": "definicion|contraejemplo|premisa_implicita|reduccion_absurdo|coherencia_interna|implicacion_moral|perspectiva_alternativa|fundamento"
+}
+Level detection:
+- avanzado: uses terms like ontological, epistemological, deontological, phenomenological, dialectics
+- intermedio: reasons about morality, ethics, reason, truth, justice, consciousness, existence
+- basico: everyday reasoning without philosophical vocabulary`;
+
+const SYSTEM_SOCRATES = `You are Socrates applying the maieutic method with rigor. ALWAYS respond in the same language the user writes in.
+
+ABSOLUTE RULES:
+1. ALWAYS respond with 1 or 2 complete questions. Never more.
+2. NEVER give direct answers or affirm truths.
+3. ALWAYS complete your sentences. Never leave a sentence unfinished.
+4. Maximum 3 lines total.
+5. Your questions emerge from the user's own discourse.
+
+STRATEGIES:
+- definicion: "What do you exactly mean by X?"
+- contraejemplo: "Is there any case where that is not so?"
+- premisa_implicita: "What would you have to assume for that to be true?"
+- reduccion_absurdo: "If we apply that principle universally, what would happen?"
+- coherencia_interna: "Earlier you said X — how does that reconcile with what you say now?"
+- implicacion_moral: "What would that imply for someone in the opposite situation?"
+- perspectiva_alternativa: "How would someone who thinks the exact opposite see this?"
+- fundamento: "What do you base that claim on?"
+
+LEVEL ADAPTATION:
+- basico: everyday examples, simple language
+- intermedio: basic philosophical terms allowed
+- avanzado: technical philosophical terminology allowed
+
+FORBIDDEN:
+- Incomplete sentences
+- More than 3 lines
+- Explanations or lists
+- "You are right" / "You are wrong"
+- Repeating the same strategy twice in a row`;
+
+function summarizeHistory(hist) {
+  return hist.map(m => {
+    const role = m.role === 'user' ? 'U' : 'S';
+    let content = m.content.replace(/\[.*?\]/gs, '').trim();
+    if (content.length > 120) content = content.substring(0, 120) + '…';
+    return `${role}: ${content}`;
+  }).join('\n');
+}
+
+const strategyTexts = {
+  definicion: "Ask the user to define the key term in their statement.",
+  contraejemplo: "Find a concrete case where the user's claim might not hold.",
+  premisa_implicita: "Expose an unstated assumption in their reasoning.",
+  reduccion_absurdo: "Take their principle to an extreme to examine consequences.",
+  coherencia_interna: "Point out the detected contradiction with something said before.",
+  implicacion_moral: "Explore the ethical consequences of their position.",
+  perspectiva_alternativa: "Introduce the opposing point of view.",
+  fundamento: "Ask what they base their claim on."
+};
+
+async function analyzeMessage(userMsg) {
+  const recentHistory = history.slice(-6);
+  const histStr = recentHistory.length ? summarizeHistory(recentHistory) : 'none';
+  const prompt = `Recent history:\n${histStr}\n\nCurrent message: ${userMsg}`;
+  try {
+    const text = await callGroq([{ role: 'user', content: prompt }], SYSTEM_ANALISIS, 200, 0.1);
+    const clean = text.replace(/```json\s*/g, '').replace(/```\s*/g, '');
+    const match = clean.match(/\{[\s\S]*\}/);
+    if (match) return JSON.parse(match[0]);
+  } catch(e) { throw e; }
+  return { nueva_tesis: null, contradiccion: null, concepto_sin_definir: null, tiene_afirmacion_moral: false, nivel_filosofico: ubm.nivel, estrategia_recomendada: 'fundamento' };
+}
+
+function updateUBM(analysis) {
+  ubm.turnos++;
+  if (analysis.nueva_tesis) ubm.tesis.push(analysis.nueva_tesis);
+  if (analysis.contradiccion) ubm.contradicciones.push(analysis.contradiccion);
+  if (analysis.concepto_sin_definir) ubm.conceptosSinDefinir.push(analysis.concepto_sin_definir);
+  if (analysis.nivel_filosofico) {
+    const levels = ['basico', 'intermedio', 'avanzado'];
+    if (levels.indexOf(analysis.nivel_filosofico) > levels.indexOf(ubm.nivel)) {
+      ubm.nivel = analysis.nivel_filosofico;
+    }
+  }
+}
+
+function decideStrategy(analysis) {
+  if (analysis.contradiccion && ubm.turnos > 1) return 'coherencia_interna';
+  if (analysis.concepto_sin_definir && ubm.conceptosSinDefinir.length <= 2) return 'definicion';
+  if (analysis.tiene_afirmacion_moral && ubm.ultimoTipo !== 'implicacion_moral') return 'implicacion_moral';
+  let tipo = analysis.estrategia_recomendada || 'fundamento';
+  if (tipo === ubm.ultimoTipo) {
+    const others = STRATEGIES.filter(s => s !== tipo);
+    tipo = others[Math.floor(Math.random() * others.length)];
+  }
+  return tipo;
+}
+
+function renderUBM(strategy, analysis) {
+  const levelEl = document.getElementById('ubm-level');
+  const dotEl = document.getElementById('level-dot');
+  const turnsEl = document.getElementById('ubm-turns');
+  const stratEl = document.getElementById('ubm-strategy');
+
+  if (levelEl) {
+    levelEl.textContent = t(`level.${ubm.nivel}`);
+    dotEl.className = `level-dot ${ubm.nivel}`;
+  }
+  if (turnsEl) turnsEl.textContent = ubm.turnos;
+  if (stratEl) {
+    const translated = t(`strategy.${strategy}`);
+    stratEl.innerHTML = `<span class="strategy-tag">${translated}</span>`;
+  }
+
+  const tesisContainer = document.getElementById('ubm-tesis-container');
+  const tesisEl = document.getElementById('ubm-tesis');
+  if (ubm.tesis.length && tesisEl) {
+    tesisContainer.style.display = 'block';
+    tesisEl.textContent = ubm.tesis[ubm.tesis.length - 1];
+  }
+
+  const contradContainer = document.getElementById('ubm-contradiction-container');
+  const contradEl = document.getElementById('ubm-contradiction');
+  if (analysis?.contradiccion && contradEl) {
+    contradContainer.style.display = 'block';
+    contradEl.textContent = analysis.contradiccion;
+  } else if (contradContainer) {
+    contradContainer.style.display = 'none';
+  }
+}
+
+// ─── SEND MESSAGE ───────────────────────────
+window.sendMessage = async function() {
+  const input = document.getElementById('message-input');
+  const msg = input.value.trim();
+  if (!msg || isSending) return;
+
+  if (!apiKeys.length) {
+    addMessage('system', t('err.no.keys'));
+    return;
+  }
+
+  isSending = true;
+  input.value = '';
+  autoResize(input);
+  document.getElementById('send-btn').disabled = true;
+  document.getElementById('examples-row').style.display = 'none';
+  document.getElementById('welcome-msg').style.display = 'none';
+
+  addMessage('user', msg);
+  showTyping(true);
+
+  try {
+    // Analysis call
+    const analysis = await analyzeMessage(msg);
+    updateUBM(analysis);
+    const strategy = decideStrategy(analysis);
+    ubm.ultimoTipo = strategy;
+
+    // Build enriched message
+    const instruccion = strategyTexts[strategy] || '';
+    let contradNote = '';
+    if (analysis.contradiccion) {
+      contradNote = `CONTRADICTION DETECTED: ${analysis.contradiccion}. Mention it briefly before asking.\n`;
+    }
+    const contextResume = historyResumen ? `[Previous conversation summary:\n${historyResumen}]\n\n` : '';
+    const enriched = `${contextResume}${contradNote}Level: ${ubm.nivel}\nStrategy: ${instruccion}\n\nUser: ${msg}`;
+
+    history.push({ role: 'user', content: enriched });
+
+    // Socratic response call
+    const response = await callGroq(history, SYSTEM_SOCRATES, 300, 0.7);
+    const clean = response.replace(/\[.*?\]/gs, '').trim();
+
+    history.push({ role: 'assistant', content: clean });
+
+    // Compress if needed
+    const MAX_HIST = 12;
+    if (history.length > MAX_HIST) {
+      const toCompress = history.slice(0, -MAX_HIST);
+      const newSummary = summarizeHistory(toCompress);
+      historyResumen = historyResumen ? (historyResumen + '\n' + newSummary).slice(-1000) : newSummary;
+      history = history.slice(-MAX_HIST);
+    }
+
+    showTyping(false);
+    addMessage('socrates', clean, strategy);
+    renderUBM(strategy, analysis);
+
+  } catch(e) {
+    showTyping(false);
+    let errMsg;
+    if (e.message === 'NO_KEYS') errMsg = t('err.no.keys');
+    else if (e.message === 'ALL_EXHAUSTED') errMsg = t('err.exhausted');
+    else errMsg = t('err.generic');
+    addMessage('system', errMsg);
+  }
+
+  isSending = false;
+  document.getElementById('send-btn').disabled = false;
+  input.focus();
+};
+
+window.handleKey = function(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+};
+
+window.useExample = function(el) {
+  document.getElementById('message-input').value = el.textContent;
+  document.getElementById('welcome-msg').style.display = 'none';
+  document.getElementById('examples-row').style.display = 'none';
+  sendMessage();
+};
+
+window.autoResize = function(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 140) + 'px';
+};
+
+// ─── MESSAGE RENDERING ──────────────────────
+function addMessage(role, text, strategy) {
+  const container = document.getElementById('messages');
+  const div = document.createElement('div');
+  div.className = `message ${role}`;
+
+  const avatarMap = { socrates: '🏺', user: '👤', system: '⚠️' };
+  const avatar = avatarMap[role] || '?';
+
+  if (role === 'system') {
+    div.innerHTML = `<div style="width:100%;text-align:center;color:var(--text-muted);font-style:italic;font-size:14px;padding:8px">${text}</div>`;
+  } else {
+    const stratHtml = (role === 'socrates' && strategy)
+      ? `<div class="msg-strategy">${t(`strategy.${strategy}`)}</div>` : '';
+    div.innerHTML = `
+      <div class="msg-avatar">${avatar}</div>
+      <div class="msg-content">
+        <div class="msg-bubble">${text.replace(/\n/g, '<br>')}</div>
+        ${stratHtml}
+      </div>`;
+  }
+
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+function showTyping(visible) {
+  document.getElementById('typing').classList.toggle('visible', visible);
+  const container = document.getElementById('messages');
+  container.scrollTop = container.scrollHeight;
+}
+
+// ─── RESET ──────────────────────────────────
+window.resetConversation = function() {
+  history = [];
+  historyResumen = '';
+  ubm = { tesis: [], contradicciones: [], conceptosSinDefinir: [], ultimoTipo: null, turnos: 0, nivel: 'basico' };
+  renderUBM(null, null);
+  const container = document.getElementById('messages');
+  container.innerHTML = `<div class="welcome-msg" id="welcome-msg">
+    <div class="quote">${t('welcome.quote')}</div>
+    <div class="quote-author">— SÓCRATES</div>
+  </div>`;
+  document.getElementById('examples-row').style.display = 'flex';
+  document.getElementById('provider-badge').textContent = '— sin actividad —';
+  document.getElementById('provider-badge').className = 'provider-badge';
+  toast(t('toast.reset'));
+};
+
+// ─── SETTINGS ───────────────────────────────
+window.openSettings = function() {
+  document.getElementById('settings-panel').classList.add('open');
+  document.getElementById('panel-overlay').classList.add('open');
+  renderApiKeys();
+  const emailEl = document.getElementById('account-email');
+  if (emailEl && currentUser) emailEl.textContent = currentUser.email;
+};
+
+window.closeSettings = function() {
+  document.getElementById('settings-panel').classList.remove('open');
+  document.getElementById('panel-overlay').classList.remove('open');
+};
+
+// ─── SIDEBAR ────────────────────────────────
+window.toggleSidebar = function() {
+  document.getElementById('sidebar').classList.toggle('collapsed');
+};
+
+// ─── TOAST ──────────────────────────────────
+window.toast = function(msg, type = '') {
+  const container = document.getElementById('toast-container');
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  container.appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+};
+
+// ─── AUTH STATE ─────────────────────────────
+onAuthStateChanged(auth, async (user) => {
+  if (user) {
+    currentUser = user;
+    await loadUserData(user);
+    applyTranslations();
+    addMessage('socrates', t('welcome.socrates'));
+    showScreen('chat-screen');
+  } else {
+    currentUser = null;
+    apiKeys = [];
+    showScreen('auth-screen');
+  }
+});
+
+// ─── BACKGROUND CANVAS ──────────────────────
+(function initCanvas() {
+  const canvas = document.getElementById('bg-canvas');
+  const ctx = canvas.getContext('2d');
+  let particles = [];
+  let W, H;
+
+  function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  for (let i = 0; i < 60; i++) {
+    particles.push({
+      x: Math.random() * window.innerWidth,
+      y: Math.random() * window.innerHeight,
+      r: Math.random() * 1.5 + 0.3,
+      dx: (Math.random() - 0.5) * 0.3,
+      dy: (Math.random() - 0.5) * 0.3,
+      alpha: Math.random() * 0.4 + 0.1
+    });
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    particles.forEach(p => {
+      p.x += p.dx;
+      p.y += p.dy;
+      if (p.x < 0) p.x = W;
+      if (p.x > W) p.x = 0;
+      if (p.y < 0) p.y = H;
+      if (p.y > H) p.y = 0;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(201, 168, 76, ${p.alpha})`;
+      ctx.fill();
+    });
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+applyTranslations();
+</script>
+</body>
+</html>
