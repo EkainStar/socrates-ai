@@ -711,6 +711,22 @@ body {
 }
 .example-pill:hover { background: rgba(201,168,76,0.12); color: var(--gold-light); }
 
+#random-topic-btn {
+  background: rgba(201, 168, 76, 0.06);
+  border: 1px solid rgba(201, 168, 76, 0.25);
+  color: var(--gold);
+  font-style: normal;
+  font-family: 'Cinzel', serif;
+  font-size: 11px;
+  letter-spacing: 2px;
+  padding: 8px 20px;
+  border-radius: 20px;
+}
+#random-topic-btn:hover {
+  background: rgba(201, 168, 76, 0.15);
+  box-shadow: 0 0 12px rgba(201, 168, 76, 0.15);
+}
+
 /* Welcome message */
 .welcome-msg {
   text-align: center;
@@ -848,9 +864,10 @@ body {
   background: var(--text-muted);
   flex-shrink: 0;
 }
-.api-key-item .key-status.active { background: #6B9B6B; }
-.api-key-item .key-status.exhausted { background: #9B6B6B; }
+.api-key-item .key-status.active { background: #6B9B6B; box-shadow: 0 0 6px rgba(107,155,107,0.5); }
+.api-key-item .key-status.exhausted { background: #C97B30; box-shadow: 0 0 6px rgba(201,123,48,0.4); }
 .api-key-item .key-status.pending { background: var(--text-muted); }
+.api-key-item.exhausted-row { opacity: 0.6; }
 
 .api-key-item .btn-remove {
   background: none;
@@ -1232,10 +1249,9 @@ body {
       <!-- Input -->
       <div class="chat-input-area">
         <div class="examples-row" id="examples-row">
-          <button class="example-pill" onclick="useExample(this)">El libre albedrío no existe</button>
-          <button class="example-pill" onclick="useExample(this)">La felicidad es el único fin válido</button>
-          <button class="example-pill" onclick="useExample(this)">Está bien mentir para hacer el bien</button>
-          <button class="example-pill" onclick="useExample(this)">La justicia y la ley son lo mismo</button>
+          <button class="example-pill" id="random-topic-btn" onclick="suggestRandomTopic()">
+            🎲 Sugerir un tema
+          </button>
         </div>
         <div class="input-wrapper">
           <textarea
@@ -1295,7 +1311,7 @@ body {
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendEmailVerification, sendPasswordResetEmail }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, doc, getDoc, setDoc, updateDoc }
+import { getFirestore, doc, getDoc, setDoc, updateDoc, serverTimestamp }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 // ─── FIREBASE CONFIG ───────────────────────
@@ -1339,7 +1355,7 @@ function decrypt(encoded) {
 // ─── STATE ─────────────────────────────────
 let currentUser = null;
 let apiKeys = [];      // decrypted, in-memory only
-let currentKeyIndex = 0;
+let currentKeyIndex = 0; // kept for Firebase compatibility only
 let lang = localStorage.getItem('lang') || 'es';
 
 // Conversation state
@@ -1561,20 +1577,50 @@ window.forgotPassword = async function() {
 };
 
 // ─── FIREBASE USER DATA ─────────────────────
+// ─── CONVERSATION DISPLAY ───────────────────
+// Stores {role, text, strategy} — the visual messages (not the enriched history sent to Groq)
+let displayMessages = [];
+const MAX_DISPLAY = 20;  // after this many pairs, summarize older ones
+
 async function loadUserData(user) {
   try {
     const ref = doc(db, 'users', user.uid);
     const snap = await getDoc(ref);
     if (snap.exists()) {
       const data = snap.data();
+      // API keys — support both old string format and new object format
       const encryptedKeys = data.apiKeys || [];
-      apiKeys = encryptedKeys.map(k => decrypt(k)).filter(k => k.startsWith('gsk_'));
-      currentKeyIndex = data.currentKeyIndex || 0;
-      if (currentKeyIndex >= apiKeys.length) currentKeyIndex = 0;
+      apiKeys = encryptedKeys.map(k => {
+        if (typeof k === 'string') {
+          // Old format: plain encrypted string
+          const decrypted = decrypt(k);
+          return decrypted.startsWith('gsk_') ? { key: decrypted, status: 'pending' } : null;
+        } else if (k && typeof k === 'object') {
+          // New format: {key: encrypted, status}
+          const decrypted = decrypt(k.key);
+          return decrypted.startsWith('gsk_') ? { key: decrypted, status: k.status || 'pending' } : null;
+        }
+        return null;
+      }).filter(Boolean);
+      // Ensure first non-exhausted key is marked active
+      const firstActive = apiKeys.findIndex(k => k.status !== 'exhausted');
+      if (firstActive !== -1) apiKeys[firstActive].status = 'active';
+      currentKeyIndex = 0;
+      // Last conversation
+      if (data.lastConversation) {
+        const conv = data.lastConversation;
+        history = conv.history || [];
+        historyResumen = conv.historyResumen || '';
+        displayMessages = conv.displayMessages || [];
+        // Restore UBM state
+        if (conv.ubm) Object.assign(ubm, conv.ubm);
+        // Restore plan
+        if (conv.plan) Object.assign(plan, conv.plan);
+      }
     } else {
       apiKeys = [];
       currentKeyIndex = 0;
-      await setDoc(ref, { apiKeys: [], currentKeyIndex: 0, createdAt: Date.now() });
+      await setDoc(ref, { apiKeys: [], currentKeyIndex: 0, createdAt: serverTimestamp() });
     }
   } catch(e) {
     console.error('Error loading user data', e);
@@ -1586,21 +1632,87 @@ async function saveUserData() {
   if (!currentUser) return;
   try {
     const ref = doc(db, 'users', currentUser.uid);
-    const encryptedKeys = apiKeys.map(k => encrypt(k));
-    await updateDoc(ref, { apiKeys: encryptedKeys, currentKeyIndex });
+    const encryptedKeys = apiKeys.map(k => ({ key: encrypt(k.key), status: k.status }));
+    await updateDoc(ref, { apiKeys: encryptedKeys, currentKeyIndex: 0 });
   } catch(e) { console.error('Error saving user data', e); }
 }
 
+async function saveConversation() {
+  if (!currentUser) return;
+  try {
+    const ref = doc(db, 'users', currentUser.uid);
+    await updateDoc(ref, {
+      lastConversation: {
+        history,
+        historyResumen,
+        displayMessages,
+        ubm: { ...ubm },
+        plan: { ...plan },
+        updatedAt: Date.now()
+      }
+    });
+  } catch(e) { console.error('Error saving conversation', e); }
+}
+
+async function clearConversation() {
+  if (!currentUser) return;
+  try {
+    const ref = doc(db, 'users', currentUser.uid);
+    await updateDoc(ref, { lastConversation: null });
+  } catch(e) { console.error('Error clearing conversation', e); }
+}
+
 // ─── API KEYS MANAGEMENT ────────────────────
+// apiKeys = [{key: 'gsk_...', status: 'active'|'pending'|'exhausted'}]
 const MAX_KEYS = 20;
+
+async function validateGroqKey(key) {
+  try {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: [{ role: 'user', content: 'hi' }],
+        max_tokens: 1
+      })
+    });
+    // 200 = valid, 429 = valid but rate limited, 401 = invalid
+    return res.status !== 401;
+  } catch(e) { return false; }
+}
 
 window.addApiKey = async function() {
   const input = document.getElementById('new-key-input');
   const key = input.value.trim();
   if (!key.startsWith('gsk_')) { toast(t('toast.key.invalid'), 'error'); return; }
   if (apiKeys.length >= MAX_KEYS) { toast(t('toast.key.max'), 'error'); return; }
-  if (apiKeys.includes(key)) { toast(t('toast.key.duplicate'), 'error'); return; }
-  apiKeys.push(key);
+  if (apiKeys.some(k => k.key === key)) { toast(t('toast.key.duplicate'), 'error'); return; }
+
+  // Show validating state
+  const btn = document.querySelector('.btn-add');
+  const origText = btn.textContent;
+  btn.textContent = '⏳';
+  btn.disabled = true;
+
+  const valid = await validateGroqKey(key);
+  btn.textContent = origText;
+  btn.disabled = false;
+
+  if (!valid) { toast(lang === 'es' ? 'Clave inválida o rechazada' : 'Invalid or rejected key', 'error'); return; }
+
+  // Insert at beginning if no keys, else before exhausted ones
+  const firstExhausted = apiKeys.findIndex(k => k.status === 'exhausted');
+  const newKey = { key, status: apiKeys.length === 0 ? 'active' : 'pending' };
+  if (firstExhausted === -1) {
+    apiKeys.push(newKey);
+  } else {
+    apiKeys.splice(firstExhausted, 0, newKey);
+  }
+
+  // First key is always active
+  if (apiKeys.length === 1) apiKeys[0].status = 'active';
+
   input.value = '';
   await saveUserData();
   renderApiKeys();
@@ -1609,7 +1721,10 @@ window.addApiKey = async function() {
 
 window.removeApiKey = async function(idx) {
   apiKeys.splice(idx, 1);
-  if (currentKeyIndex >= apiKeys.length) currentKeyIndex = Math.max(0, apiKeys.length - 1);
+  // Ensure first key is active if any remain
+  if (apiKeys.length > 0 && apiKeys[0].status !== 'exhausted') {
+    apiKeys[0].status = 'active';
+  }
   await saveUserData();
   renderApiKeys();
   toast(t('toast.key.removed'));
@@ -1621,15 +1736,21 @@ function renderApiKeys() {
   if (!apiKeys.length) {
     list.innerHTML = `<div style="color:var(--text-muted);font-size:13px;font-style:italic;padding:8px 0">${t('no.keys')}</div>`;
   } else {
-    apiKeys.forEach((key, i) => {
-      const masked = key.substring(0, 8) + '••••••••••••' + key.slice(-4);
-      const isActive = i === currentKeyIndex;
+    apiKeys.forEach((entry, i) => {
+      const masked = entry.key.substring(0, 8) + '••••••••••••' + entry.key.slice(-4);
+      const status = entry.status || 'pending';
       const div = document.createElement('div');
-      div.className = 'api-key-item';
+      div.className = `api-key-item${status === 'exhausted' ? ' exhausted-row' : ''}`;
+      const label = status === 'active'
+        ? `<span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#6B9B6B;letter-spacing:1px">EN USO</span>`
+        : status === 'exhausted'
+        ? `<span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#C97B30;letter-spacing:1px">AGOTADA</span>`
+        : '';
       div.innerHTML = `
-        <span class="key-index">${i + 1}</span>
+        <span class="key-index" style="color:${status==='active'?'var(--gold)':'var(--text-muted)'}">${i + 1}</span>
         <span class="key-value" title="${masked}">${masked}</span>
-        <span class="key-status ${isActive ? 'active' : 'pending'}"></span>
+        ${label}
+        <span class="key-status ${status}"></span>
         <button class="btn-remove" onclick="removeApiKey(${i})">✕</button>
       `;
       list.appendChild(div);
@@ -1642,8 +1763,11 @@ function renderKeysInfo() {
   const info = document.getElementById('keys-info');
   if (!info) return;
   if (apiKeys.length) {
-    const fn = translations[lang]['keys.count'];
-    info.textContent = typeof fn === 'function' ? fn(apiKeys.length, MAX_KEYS) : '';
+    const active = apiKeys.filter(k => k.status !== 'exhausted').length;
+    const exhausted = apiKeys.filter(k => k.status === 'exhausted').length;
+    info.textContent = lang === 'es'
+      ? `${apiKeys.length} claves · ${active} disponibles · ${exhausted} agotadas`
+      : `${apiKeys.length} keys · ${active} available · ${exhausted} exhausted`;
   } else {
     info.textContent = '';
   }
@@ -1653,65 +1777,84 @@ function renderKeysInfo() {
 async function callGroq(messages, systemPrompt, maxTokens = 300, temperature = 0.7) {
   if (!apiKeys.length) throw new Error('NO_KEYS');
 
-  const startIndex = currentKeyIndex;
-  let attempts = 0;
+  // Filter usable keys (non-exhausted), try each once
+  const usable = apiKeys.filter(k => k.status !== 'exhausted');
+  if (!usable.length) throw new Error('ALL_EXHAUSTED');
 
-  while (attempts < apiKeys.length) {
-    const key = apiKeys[currentKeyIndex];
+  for (let attempt = 0; attempt < apiKeys.length; attempt++) {
+    // Always try the first non-exhausted key
+    const idx = apiKeys.findIndex(k => k.status !== 'exhausted');
+    if (idx === -1) throw new Error('ALL_EXHAUSTED');
+
+    const entry = apiKeys[idx];
     try {
       const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${key}`
+          'Authorization': `Bearer ${entry.key}`
         },
         body: JSON.stringify({
           model: 'llama-3.3-70b-versatile',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            ...messages
-          ],
+          messages: [{ role: 'system', content: systemPrompt }, ...messages],
           max_tokens: maxTokens,
-          temperature: temperature
+          temperature
         })
       });
 
       if (response.status === 429) {
-        // Mark key as exhausted, try next
-        markKeyExhausted(currentKeyIndex);
-        currentKeyIndex = (currentKeyIndex + 1) % apiKeys.length;
-        attempts++;
+        // Move exhausted key to end of list
+        exhaustKeyToEnd(idx);
         await saveUserData();
+        renderApiKeys();
+        continue;
+      }
+
+      if (response.status === 401) {
+        // Invalid key — remove it
+        apiKeys.splice(idx, 1);
+        await saveUserData();
+        renderApiKeys();
+        toast(lang === 'es' ? 'Clave inválida eliminada' : 'Invalid key removed', 'error');
         continue;
       }
 
       if (!response.ok) throw new Error('API_ERROR');
 
       const data = await response.json();
-      updateProviderBadge(currentKeyIndex);
+      // Ensure this key is marked active
+      apiKeys[idx].status = 'active';
+      updateProviderBadge(idx);
+      renderApiKeys();
       return data.choices[0].message.content;
 
     } catch(e) {
-      if (e.message === 'NO_KEYS') throw e;
-      currentKeyIndex = (currentKeyIndex + 1) % apiKeys.length;
-      attempts++;
+      if (e.message === 'NO_KEYS' || e.message === 'ALL_EXHAUSTED') throw e;
+      // Network error — try next
+      exhaustKeyToEnd(idx);
+      continue;
     }
   }
 
   throw new Error('ALL_EXHAUSTED');
 }
 
-function markKeyExhausted(idx) {
-  const items = document.querySelectorAll('.api-key-item');
-  if (items[idx]) {
-    const dot = items[idx].querySelector('.key-status');
-    if (dot) { dot.classList.remove('active', 'pending'); dot.classList.add('exhausted'); }
+function exhaustKeyToEnd(idx) {
+  // Mark as exhausted, move to end of array
+  const [entry] = apiKeys.splice(idx, 1);
+  entry.status = 'exhausted';
+  apiKeys.push(entry);
+  // Mark new first key as active if it's not exhausted
+  if (apiKeys.length > 0 && apiKeys[0].status !== 'exhausted') {
+    apiKeys[0].status = 'active';
   }
 }
 
 function updateProviderBadge(keyIdx) {
   const badge = document.getElementById('provider-badge');
-  badge.textContent = `Groq · Llama 3.3 · key #${keyIdx + 1}`;
+  const entry = apiKeys[keyIdx];
+  const masked = entry ? (entry.key.substring(0, 8) + '···' + entry.key.slice(-4)) : '?';
+  badge.textContent = `Groq · ${masked}`;
   badge.className = 'provider-badge groq';
 }
 
@@ -1759,19 +1902,21 @@ Return ONLY valid JSON — no markdown, no preamble, nothing else.
   "es_evasion": true or false,
   "es_ironia": true or false,
   "tiene_afirmacion_moral": true or false,
-  "calidad_argumento": integer 1-10,
+  "calidad_argumento": integer 1-10 — BE STRICT. 1-2: nonsense, random words, no argument at all. 3-4: bare assertion with no justification. 5-6: some reasoning but significant gaps or fallacies. 7-8: well-structured argument with clear premises. 9-10: ONLY for rigorous, nuanced, philosophically sophisticated reasoning. Most messages should score 2-5. Do NOT inflate scores for confident or eloquent delivery without substance.
   "patron_retorico": "one sentence describing HOW the user argues",
   "nuevo_tema": true or false,
   "tema_detectado": "brief label for the philosophical topic being discussed, or null",
   "estrategia_recomendada": "definicion_precisa|contraejemplo_limite|premisa_implicita|reduccion_absurdo|coherencia_interna|implicacion_moral|perspectiva_radicalmente_opuesta|fundamento_epistemico|desafio_directo|reencuadre_ironico|parir_verdad|reconocer_aporia"
 }
 
-For profundidad — judge ONLY by quality of reasoning, NOT vocabulary:
-- superficial: bare assertion, no justification
-- developing: attempts justification but with gaps
-- reflective: considers counterexamples spontaneously
-- critical: structured argumentation, acknowledges own limits
-- dialectical: synthesizes opposites, self-corrects`;
+For profundidad — judge ONLY by reasoning quality. BE STRICT AND CONSERVATIVE:
+- superficial: bare assertion, no justification, gibberish, or off-topic — DEFAULT for most messages
+- developing: attempts justification but with clear gaps or fallacies
+- reflective: spontaneously considers counterexamples WITHOUT being prompted
+- critical: structured multi-step argument, explicitly acknowledges own limits
+- dialectical: VERY RARE — synthesizes contradictions, self-corrects, engages paradoxes deeply
+When in doubt, assign one level LOWER. Gibberish or nonsense = always superficial`;
+
 
 const SYSTEM_ESTRATEGA = `You are the strategic mind behind Socrates — the hidden planner who designs the long-term trap.
 
@@ -2006,6 +2151,17 @@ function buildSocratesContext(analysis, userMsg) {
 
   const ctxResume = historyResumen ? `[SUMMARY OF EARLIER CONVERSATION:\n${historyResumen}]\n\n` : '';
 
+  // When no topic established yet, give Socrates a clear mandate
+  if (!plan.tema) {
+    return `${ctxResume}=== SITUATION ===
+No philosophical topic has been established yet. The user has just said something.
+Your task: respond naturally to what they said, and INVITE them to take a philosophical position on something — propose a rich philosophical topic that emerges naturally from their message, or ask them what they truly believe about something fundamental (justice, freedom, knowledge, death, happiness, truth, identity, morality...).
+Ask ONE clear, inviting question that makes them want to commit to a philosophical stance.
+Do NOT mention "topic" or "strategy" — just be Socrates, curious and warm.
+=== USER'S MESSAGE ===
+${userMsg}`;
+  }
+
   return `${ctxResume}=== STRATEGIC PLAN (secret — never reveal) ===
 Topic: ${plan.tema || 'being established'}
 Goal: Expose contradiction — "${plan.contradiccion_objetivo || 'to be determined'}"
@@ -2025,10 +2181,26 @@ function updateUBM(analysis) {
   if (analysis.contradiccion) ubm.contradicciones.push(analysis.contradiccion);
   if (analysis.falacias?.length) analysis.falacias.forEach(f => { if (!ubm.falacias.includes(f)) ubm.falacias.push(f); });
   if (analysis.concepto_sin_definir && !ubm.conceptosSinDefinir.includes(analysis.concepto_sin_definir)) ubm.conceptosSinDefinir.push(analysis.concepto_sin_definir);
-  if (analysis.calidad_argumento) ubm.calidadArgumentos.push(analysis.calidad_argumento);
+  if (analysis.calidad_argumento) {
+    const score = Math.min(10, Math.max(1, parseInt(analysis.calidad_argumento)));
+    ubm.calidadArgumentos.push(score);
+    // Keep only last 5 turns for rolling average — prevents inflation
+    if (ubm.calidadArgumentos.length > 5) ubm.calidadArgumentos.shift();
+  }
   if (analysis.patron_retorico) ubm.patronRetorico = analysis.patron_retorico;
+
+  // Depth — re-evaluated each turn from rolling window, NOT permanently locked in
+  // A single sophisticated message can't inflate the level forever
   const profLevels = ['superficial','developing','reflective','critical','dialectical'];
-  if (analysis.profundidad && profLevels.indexOf(analysis.profundidad) > profLevels.indexOf(ubm.profundidad)) ubm.profundidad = analysis.profundidad;
+  if (analysis.profundidad && profLevels.includes(analysis.profundidad)) {
+    // Weight: current reading counts 40%, previous level counts 60% — smooth transitions
+    const newIdx = profLevels.indexOf(analysis.profundidad);
+    const oldIdx = profLevels.indexOf(ubm.profundidad);
+    // Can go up max 1 step per turn, down max 1 step per turn
+    const delta = Math.sign(newIdx - oldIdx);
+    const clampedIdx = Math.max(0, Math.min(profLevels.length - 1, oldIdx + delta));
+    ubm.profundidad = profLevels[clampedIdx];
+  }
   if (analysis.estado_epistemico) ubm.estadoEpistemico = analysis.estado_epistemico;
   if (analysis.fase_socratica) {
     ubm.faseSocratica = analysis.fase_socratica;
@@ -2131,6 +2303,7 @@ window.sendMessage = async function() {
 
   addMessage('user', msg);
   showTyping(true);
+  // Track in displayMessages immediately so restore works even if API fails
 
   try {
     // CALL 1: Deep cognitive analysis
@@ -2155,7 +2328,11 @@ window.sendMessage = async function() {
 
     history.push({ role: 'assistant', content: clean });
 
-    // Compress history
+    // Track display messages (clean versions for UI + persistence)
+    displayMessages.push({ role: 'user', text: msg });
+    displayMessages.push({ role: 'socrates', text: clean, strategy });
+
+    // Compress history sent to Groq when too long
     const MAX_HIST = 14;
     if (history.length > MAX_HIST) {
       const toCompress = history.slice(0, -MAX_HIST);
@@ -2164,10 +2341,18 @@ window.sendMessage = async function() {
       history = history.slice(-MAX_HIST);
     }
 
+    // Trim display messages — keep last MAX_DISPLAY pairs (user+socrates)
+    if (displayMessages.length > MAX_DISPLAY * 2) {
+      displayMessages = displayMessages.slice(-MAX_DISPLAY * 2);
+    }
+
     showTyping(false);
     addMessage('socrates', clean, strategy);
     renderUBM(strategy, analysis);
     renderPlan();
+
+    // Save to Firebase (non-blocking)
+    saveConversation().catch(() => {});
 
   } catch(e) {
     showTyping(false);
@@ -2191,6 +2376,71 @@ window.useExample = function(el) {
   if (wm) wm.style.display = 'none';
   document.getElementById('examples-row').style.display = 'none';
   sendMessage();
+};
+
+const TEMAS_FILOSOFICOS = [
+  // Ética
+  "El fin justifica los medios",
+  "Nadie hace el mal a sabiendas",
+  "La moral es solo una convención social",
+  "Tenemos obligaciones con quienes nunca conoceremos",
+  "Es posible ser completamente imparcial",
+  "La bondad innata del ser humano",
+  "Sin castigo no hay moral verdadera",
+  // Libertad
+  "El libre albedrío es una ilusión",
+  "Somos más libres cuando tenemos menos opciones",
+  "La libertad absoluta es imposible en sociedad",
+  "Podemos elegir quiénes somos",
+  // Conocimiento
+  "Solo sé que no sé nada",
+  "Los sentidos nos engañan siempre",
+  "Hay verdades que la razón no puede alcanzar",
+  "El conocimiento verdadero es imposible",
+  "La duda es el principio de la sabiduría",
+  // Justicia
+  "Una ley injusta no es ley",
+  "La justicia y la legalidad son lo mismo",
+  "Nadie merece sufrir",
+  "Castigar es siempre una forma de venganza",
+  // Identidad
+  "Somos los mismos a los 7 que a los 70 años",
+  "Sin memoria no hay identidad",
+  "El yo no existe, es una construcción",
+  "Somos lo que hacemos, no lo que pensamos",
+  // Felicidad
+  "La felicidad es el único fin verdadero",
+  "El placer y la felicidad son lo mismo",
+  "Podemos ser felices sabiendo que moriremos",
+  "El sufrimiento es necesario para la sabiduría",
+  // Existencia
+  "La vida no tiene sentido intrínseco",
+  "Morir bien es más importante que vivir bien",
+  "La existencia precede a la esencia",
+  "El tiempo es una ilusión de la mente",
+  // Política
+  "El poder corrompe inevitablemente",
+  "El bien común justifica sacrificar al individuo",
+  "La democracia es el menos malo de los sistemas",
+  // Misc profundas
+  "El amor verdadero es desinteresado",
+  "El arte puede decir verdades que la filosofía no puede",
+  "Dios existe porque la nada es imposible",
+  "La ciencia no puede responder las preguntas más importantes",
+];
+
+window.suggestRandomTopic = function() {
+  const tema = TEMAS_FILOSOFICOS[Math.floor(Math.random() * TEMAS_FILOSOFICOS.length)];
+  const input = document.getElementById('message-input');
+  // Animate: fade out old, set new, fade in
+  input.style.transition = 'opacity 0.2s';
+  input.style.opacity = '0';
+  setTimeout(() => {
+    input.value = tema;
+    autoResize(input);
+    input.style.opacity = '1';
+    input.focus();
+  }, 200);
 };
 
 window.autoResize = function(el) {
@@ -2229,6 +2479,7 @@ function showTyping(visible) {
 window.resetConversation = function() {
   history = [];
   historyResumen = '';
+  displayMessages = [];
   ubm = {
     tesis:[], tesis_implicitas:[], contradicciones:[], falacias:[],
     conceptosSinDefinir:[], calidadArgumentos:[], patronRetorico:'',
@@ -2250,6 +2501,7 @@ window.resetConversation = function() {
   document.getElementById('examples-row').style.display = 'flex';
   document.getElementById('provider-badge').textContent = '— sin actividad —';
   document.getElementById('provider-badge').className = 'provider-badge';
+  clearConversation().catch(() => {});
   toast(t('toast.reset'));
 };
 
@@ -2288,7 +2540,31 @@ onAuthStateChanged(auth, async (user) => {
     currentUser = user;
     await loadUserData(user);
     applyTranslations();
-    addMessage('socrates', t('welcome.socrates'));
+
+    if (displayMessages.length > 0) {
+      // Restore last conversation visually
+      const container = document.getElementById('messages');
+      container.innerHTML = '';
+      document.getElementById('examples-row').style.display = 'none';
+
+      displayMessages.forEach(m => {
+        addMessage(m.role, m.text, m.strategy || null);
+      });
+
+      // Restore UBM and plan panels
+      renderUBM(ubm.ultimoTipo, null);
+      renderPlan();
+
+      // Show a subtle "conversation restored" hint
+      const hint = document.createElement('div');
+      hint.style.cssText = 'text-align:center;color:var(--text-muted);font-size:11px;font-family:"JetBrains Mono",monospace;padding:8px;letter-spacing:1px;opacity:0.6';
+      hint.textContent = '— conversación restaurada —';
+      container.appendChild(hint);
+      container.scrollTop = container.scrollHeight;
+    } else {
+      addMessage('socrates', t('welcome.socrates'));
+    }
+
     showScreen('chat-screen');
   } else {
     currentUser = null;
