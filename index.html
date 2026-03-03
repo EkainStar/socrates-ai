@@ -1150,43 +1150,43 @@ body {
         <div class="sidebar-section">
           <div class="sidebar-title">Análisis Socrático</div>
           <div class="ubm-item">
-            <div class="ubm-label">Fase del diálogo</div>
+            <div class="ubm-label" id="ubm-label-fase">Fase del diálogo</div>
             <div class="ubm-value" id="ubm-fase" style="color:var(--gold)">—</div>
           </div>
           <div class="ubm-item">
-            <div class="ubm-label">Estado epistémico</div>
+            <div class="ubm-label" id="ubm-label-epistemic">Estado epistémico</div>
             <div class="ubm-value" id="ubm-epistemic">—</div>
           </div>
           <div class="ubm-item">
-            <div class="ubm-label">Calidad del razonamiento</div>
+            <div class="ubm-label" id="ubm-label-depth">Calidad del razonamiento</div>
             <div class="ubm-value" id="ubm-depth">—</div>
           </div>
           <div class="ubm-item" id="ubm-quality-container" style="display:none">
-            <div class="ubm-label">Calidad argumental</div>
+            <div class="ubm-label" id="ubm-label-quality">Calidad argumental</div>
             <div id="ubm-quality-bar"></div>
           </div>
           <div class="ubm-item">
-            <div class="ubm-label">Progreso</div>
+            <div class="ubm-label" id="ubm-label-progress">Progreso</div>
             <div class="ubm-value" id="ubm-progress">0 turnos</div>
           </div>
           <div class="ubm-item">
-            <div class="ubm-label">Movimiento socrático</div>
+            <div class="ubm-label" id="ubm-label-strategy">Movimiento socrático</div>
             <div class="ubm-value" id="ubm-strategy">—</div>
           </div>
           <div class="ubm-item" id="ubm-tesis-container" style="display:none">
-            <div class="ubm-label">Última tesis</div>
+            <div class="ubm-label" id="ubm-label-tesis">Última tesis</div>
             <div class="ubm-value" id="ubm-tesis" style="font-style:italic"></div>
           </div>
           <div class="ubm-item" id="ubm-falacias-container" style="display:none">
-            <div class="ubm-label">⚠️ Falacias detectadas</div>
+            <div class="ubm-label" id="ubm-label-falacias">⚠️ Falacias detectadas</div>
             <div class="ubm-value" id="ubm-falacias" style="color:#E09060"></div>
           </div>
           <div class="ubm-item" id="ubm-contradiction-container" style="display:none">
-            <div class="ubm-label">⚡ Contradicción</div>
+            <div class="ubm-label" id="ubm-label-contradiction">⚡ Contradicción</div>
             <div class="contradiction-alert" id="ubm-contradiction"></div>
           </div>
           <div class="ubm-item" id="ubm-patron-container" style="display:none">
-            <div class="ubm-label">Patrón retórico</div>
+            <div class="ubm-label" id="ubm-label-patron">Patrón retórico</div>
             <div class="ubm-value" id="ubm-patron" style="font-style:italic;font-size:13px"></div>
           </div>
         </div>
@@ -1195,22 +1195,22 @@ body {
         <div class="sidebar-section" id="plan-section" style="display:none">
           <div class="sidebar-title">🎯 Plan Estratégico</div>
           <div class="ubm-item">
-            <div class="ubm-label">Tema</div>
+            <div class="ubm-label" id="plan-label-tema">Tema</div>
             <div class="ubm-value" id="plan-tema" style="color:var(--gold);font-style:italic"></div>
           </div>
           <div class="ubm-item">
-            <div class="ubm-label">Contradicción objetivo</div>
+            <div class="ubm-label" id="plan-label-objetivo">Contradicción objetivo</div>
             <div class="ubm-value" id="plan-objetivo" style="font-size:12px;line-height:1.6;font-style:normal"></div>
           </div>
           <div class="ubm-item">
-            <div class="ubm-label">Pasos del plan</div>
+            <div class="ubm-label" id="plan-label-pasos">Pasos del plan</div>
             <div id="plan-pasos" style="margin-top:6px"></div>
           </div>
           <div id="plan-contradiccion-badge" style="display:none;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.35);padding:8px 10px;margin-top:10px;font-size:10px;color:var(--gold);text-align:center;font-family:'Cinzel',serif;letter-spacing:2px;border-radius:2px">
             ✦ CONTRADICCIÓN ALCANZADA ✦
           </div>
           <div class="ubm-item" style="margin-top:10px">
-            <div class="ubm-label">Definición en construcción</div>
+            <div class="ubm-label" id="plan-label-definicion">Definición en construcción</div>
             <div class="ubm-value" id="plan-definicion" style="font-style:italic;font-size:12px;color:var(--gold-light);line-height:1.6"></div>
           </div>
         </div>
@@ -1492,6 +1492,9 @@ window.toggleLang = function() {
   localStorage.setItem('lang', lang);
   applyTranslations();
   renderKeysInfo();
+  rerenderMessages();        // re-render message bubbles + strategy tags
+  renderUBM(ubm.ultimoTipo, null);  // re-render all panel labels + values
+  renderPlan();              // re-render plan panel labels
 };
 
 // ─── SCREEN MANAGEMENT ─────────────────────
@@ -1773,16 +1776,34 @@ function renderKeysInfo() {
   }
 }
 
+// ─── BILINGUAL RESPONSE PARSER ──────────────
+// Groq returns: "[ES] ...texto... [EN] ...text..."
+// We extract only the active language version.
+function extractLang(raw, language) {
+  const esMatch = raw.match(/\[ES\]([\s\S]*?)(?=\[EN\]|$)/);
+  const enMatch = raw.match(/\[EN\]([\s\S]*?)$/);
+  const es = esMatch ? esMatch[1].trim() : null;
+  const en = enMatch ? enMatch[1].trim() : null;
+  if (language === 'es') return es || en || raw.trim();
+  return en || es || raw.trim();
+}
+
 // ─── GROQ API CALL ──────────────────────────
-async function callGroq(messages, systemPrompt, maxTokens = 300, temperature = 0.7) {
+// bilingual: if true, tells Groq to return [ES]/[EN] blocks
+async function callGroq(messages, systemPrompt, maxTokens = 300, temperature = 0.7, bilingual = false) {
   if (!apiKeys.length) throw new Error('NO_KEYS');
 
-  // Filter usable keys (non-exhausted), try each once
   const usable = apiKeys.filter(k => k.status !== 'exhausted');
   if (!usable.length) throw new Error('ALL_EXHAUSTED');
 
+  // Inject language instruction into system prompt
+  const langNote = bilingual
+    ? `\n\nLANGUAGE: The user's selected interface language is "${lang === 'es' ? 'Spanish' : 'English'}". You MUST produce BOTH language versions in every response, using this exact format:\n[ES] respuesta completa en español\n[EN] complete response in English\nNever omit either block. Never add text outside these blocks.`
+    : `\n\nLANGUAGE: Respond in ${lang === 'es' ? 'Spanish' : 'English'} only.`;
+
+  const fullSystem = systemPrompt + langNote;
+
   for (let attempt = 0; attempt < apiKeys.length; attempt++) {
-    // Always try the first non-exhausted key
     const idx = apiKeys.findIndex(k => k.status !== 'exhausted');
     if (idx === -1) throw new Error('ALL_EXHAUSTED');
 
@@ -1796,33 +1817,28 @@ async function callGroq(messages, systemPrompt, maxTokens = 300, temperature = 0
         },
         body: JSON.stringify({
           model: 'llama-3.3-70b-versatile',
-          messages: [{ role: 'system', content: systemPrompt }, ...messages],
+          messages: [{ role: 'system', content: fullSystem }, ...messages],
           max_tokens: maxTokens,
           temperature
         })
       });
 
       if (response.status === 429) {
-        // Move exhausted key to end of list
         exhaustKeyToEnd(idx);
         await saveUserData();
         renderApiKeys();
         continue;
       }
-
       if (response.status === 401) {
-        // Invalid key — remove it
         apiKeys.splice(idx, 1);
         await saveUserData();
         renderApiKeys();
         toast(lang === 'es' ? 'Clave inválida eliminada' : 'Invalid key removed', 'error');
         continue;
       }
-
       if (!response.ok) throw new Error('API_ERROR');
 
       const data = await response.json();
-      // Ensure this key is marked active
       apiKeys[idx].status = 'active';
       updateProviderBadge(idx);
       renderApiKeys();
@@ -1830,12 +1846,10 @@ async function callGroq(messages, systemPrompt, maxTokens = 300, temperature = 0
 
     } catch(e) {
       if (e.message === 'NO_KEYS' || e.message === 'ALL_EXHAUSTED') throw e;
-      // Network error — try next
       exhaustKeyToEnd(idx);
       continue;
     }
   }
-
   throw new Error('ALL_EXHAUSTED');
 }
 
@@ -1948,7 +1962,11 @@ The plan should update when the user's position evolves significantly.`;
 
 const SYSTEM_SOCRATES = `You are the living spirit of Socrates of Athens. Not a simulation — YOU ARE SOCRATES.
 
-ALWAYS respond in the SAME LANGUAGE the user writes in.
+BILINGUAL OUTPUT REQUIRED — you must ALWAYS respond in BOTH languages, in this exact format:
+[ES] tu respuesta completa en español aquí
+[EN] your complete response in English here
+
+Both versions must be equally natural — not a translation, but two authentic responses. The [ES] version is in Spanish, the [EN] version is in English. Never omit either. Never add text outside these tags.
 
 You have a SECRET STRATEGIC PLAN provided to you. Follow it precisely — but never reveal it. The user must feel they are thinking freely while you guide them step by step toward the contradiction you have already foreseen.
 
@@ -1966,7 +1984,7 @@ PHASE 3 — APORIA: When they reach genuine confusion — let them sit with it. 
 PHASE 4 — MAIEUSIS + JOINT DEFINITION: Once false certainty is gone, guide them to discover the truth from within. Then build a JOINT DEFINITION together — synthesizing what both of you have uncovered.
 
 ═══ FOLLOWING THE PLAN ═══
-You have been given a strategic plan with specific steps. Your current step tells you WHAT the user must acknowledge next. Design your question to achieve exactly that — without revealing the trap. 
+You have been given a strategic plan with specific steps. Your current step tells you WHAT the user must acknowledge next. Design your question to achieve exactly that — without revealing the trap.
 
 If the user is close to the contradiction — push harder. If they've reached it — acknowledge it powerfully, then pivot to building the joint definition.
 
@@ -1981,48 +1999,54 @@ If the user changes subject — follow them. Detect the new topic. The strategis
 - If building joint definition: "So perhaps we can say together that [emerging definition]? Does that capture what you mean? What would you add or change?"
 
 ═══ FORMAT ═══
-2-4 lines maximum. Every word must earn its place.
-End with a question that cannot be easily deflected.
+2-4 lines per language version. Every word must earn its place.
+End each version with a question that cannot be easily deflected.
 NEVER leave sentences unfinished.
 NEVER use lists, headers, or explanations.
 NEVER say "Great point" or similar empty praise.
 NEVER give the answer — guide them to find it.`;
-
 // ─── LABELS ────────────────────────────────
 const FASE_LABELS = {
-  elenchus_needed: '⚔️ Elenchos',
-  aporia_reached: '🌀 Aporía',
-  maieusis_ready: '🌱 Mayéutica',
-  insight_emerging: '✨ Insight emergiendo'
+  elenchus_needed: { es: '⚔️ Elenchos', en: '⚔️ Elenchus' },
+  aporia_reached:  { es: '🌀 Aporía',   en: '🌀 Aporia' },
+  maieusis_ready:  { es: '🌱 Mayéutica', en: '🌱 Maieusis' },
+  insight_emerging:{ es: '✨ Insight emergiendo', en: '✨ Insight emerging' }
 };
 const PROF_LABELS = {
-  superficial: '○○○○○ Superficial',
-  developing: '●○○○○ En desarrollo',
-  reflective: '●●○○○ Reflexivo',
-  critical: '●●●○○ Crítico',
-  dialectical: '●●●●● Dialéctico'
+  superficial: { es: '○○○○○ Superficial',   en: '○○○○○ Superficial' },
+  developing:  { es: '●○○○○ En desarrollo',  en: '●○○○○ Developing' },
+  reflective:  { es: '●●○○○ Reflexivo',      en: '●●○○○ Reflective' },
+  critical:    { es: '●●●○○ Crítico',        en: '●●●○○ Critical' },
+  dialectical: { es: '●●●●● Dialéctico',     en: '●●●●● Dialectical' }
 };
 const EPIST_LABELS = {
-  dogmatic: '🔒 Dogmático',
-  confident: '🔓 Confiado',
-  uncertain: '❓ Incierto',
-  aporetic: '💡 Aporético'
+  dogmatic:   { es: '🔒 Dogmático',  en: '🔒 Dogmatic' },
+  confident:  { es: '🔓 Confiado',   en: '🔓 Confident' },
+  uncertain:  { es: '❓ Incierto',   en: '❓ Uncertain' },
+  aporetic:   { es: '💡 Aporético',  en: '💡 Aporetic' }
 };
 const STRATEGY_LABELS = {
-  definicion_precisa: 'Definición precisa',
-  contraejemplo_limite: 'Contraejemplo límite',
-  premisa_implicita: 'Premisa implícita',
-  reduccion_absurdo: 'Reducción al absurdo',
-  coherencia_interna: 'Coherencia interna',
-  implicacion_moral: 'Implicación moral',
-  perspectiva_radicalmente_opuesta: 'Perspectiva opuesta',
-  fundamento_epistemico: 'Fundamento epistémico',
-  desafio_directo: '⚡ Desafío directo',
-  reencuadre_ironico: '🎭 Ironía socrática',
-  parir_verdad: '🌱 Parir la verdad',
-  reconocer_aporia: '🌀 Reconocer aporía'
+  definicion_precisa:            { es: 'Definición precisa',       en: 'Precise definition' },
+  contraejemplo_limite:          { es: 'Contraejemplo límite',     en: 'Limit counterexample' },
+  premisa_implicita:             { es: 'Premisa implícita',        en: 'Implicit premise' },
+  reduccion_absurdo:             { es: 'Reducción al absurdo',     en: 'Reductio ad absurdum' },
+  coherencia_interna:            { es: 'Coherencia interna',       en: 'Internal coherence' },
+  implicacion_moral:             { es: 'Implicación moral',        en: 'Moral implication' },
+  perspectiva_radicalmente_opuesta: { es: 'Perspectiva opuesta',  en: 'Opposite perspective' },
+  fundamento_epistemico:         { es: 'Fundamento epistémico',    en: 'Epistemic foundation' },
+  desafio_directo:               { es: '⚡ Desafío directo',       en: '⚡ Direct challenge' },
+  reencuadre_ironico:            { es: '🎭 Ironía socrática',      en: '🎭 Socratic irony' },
+  parir_verdad:                  { es: '🌱 Parir la verdad',       en: '🌱 Birthing truth' },
+  reconocer_aporia:              { es: '🌀 Reconocer aporía',      en: '🌀 Recognizing aporia' }
 };
 const ALL_STRATEGIES = Object.keys(STRATEGY_LABELS);
+
+// Helper: get label in active lang
+function L(map, key) {
+  const entry = map[key];
+  if (!entry) return key;
+  return entry[lang] || entry.es || key;
+}
 
 // ─── UTILS ──────────────────────────────────
 function summarizeHistory(hist) {
@@ -2230,9 +2254,48 @@ function renderUBM(strategy, analysis) {
   const set = (id, val) => { const el = document.getElementById(id); if (el) el.innerHTML = val; };
   const show = (id, v) => { const el = document.getElementById(id); if (el) el.style.display = v ? 'block' : 'none'; };
 
-  set('ubm-fase', FASE_LABELS[ubm.faseSocratica] || '—');
-  set('ubm-epistemic', EPIST_LABELS[ubm.estadoEpistemico] || '—');
-  set('ubm-depth', PROF_LABELS[ubm.profundidad] || '—');
+  // Sidebar section title
+  const sideTitle = document.querySelector('.sidebar-section .sidebar-title');
+  if (sideTitle) sideTitle.textContent = lang === 'es' ? 'Análisis Socrático' : 'Socratic Analysis';
+
+  // UBM labels
+  const labels = {
+    'ubm-label-fase':          { es: 'Fase del diálogo',         en: 'Dialogue phase' },
+    'ubm-label-epistemic':     { es: 'Estado epistémico',        en: 'Epistemic state' },
+    'ubm-label-depth':         { es: 'Calidad del razonamiento', en: 'Reasoning quality' },
+    'ubm-label-quality':       { es: 'Calidad argumental',       en: 'Argument quality' },
+    'ubm-label-progress':      { es: 'Progreso',                 en: 'Progress' },
+    'ubm-label-strategy':      { es: 'Movimiento socrático',     en: 'Socratic move' },
+    'ubm-label-tesis':         { es: 'Última tesis',             en: 'Latest thesis' },
+    'ubm-label-falacias':      { es: '⚠️ Falacias detectadas',   en: '⚠️ Detected fallacies' },
+    'ubm-label-contradiction': { es: '⚡ Contradicción',         en: '⚡ Contradiction' },
+    'ubm-label-patron':        { es: 'Patrón retórico',          en: 'Rhetorical pattern' },
+  };
+  Object.entries(labels).forEach(([id, map]) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = map[lang] || map.es;
+  });
+
+  // Plan section labels
+  const planTitle = document.querySelector('#plan-section .sidebar-title');
+  if (planTitle) planTitle.textContent = lang === 'es' ? '🎯 Plan Estratégico' : '🎯 Strategic Plan';
+  const planLabels = {
+    'plan-label-tema':       { es: 'Tema',                       en: 'Topic' },
+    'plan-label-objetivo':   { es: 'Contradicción objetivo',     en: 'Target contradiction' },
+    'plan-label-pasos':      { es: 'Pasos del plan',             en: 'Plan steps' },
+    'plan-label-definicion': { es: 'Definición en construcción', en: 'Definition in progress' },
+  };
+  Object.entries(planLabels).forEach(([id, map]) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = map[lang] || map.es;
+  });
+  const badge = document.getElementById('plan-contradiccion-badge');
+  if (badge) badge.textContent = lang === 'es' ? '✦ CONTRADICCIÓN ALCANZADA ✦' : '✦ CONTRADICTION REACHED ✦';
+
+  // Values
+  set('ubm-fase', L(FASE_LABELS, ubm.faseSocratica) || '—');
+  set('ubm-epistemic', L(EPIST_LABELS, ubm.estadoEpistemico) || '—');
+  set('ubm-depth', L(PROF_LABELS, ubm.profundidad) || '—');
 
   if (ubm.calidadArgumentos.length) {
     const avg = ubm.calidadArgumentos.reduce((a,b)=>a+b,0)/ubm.calidadArgumentos.length;
@@ -2246,8 +2309,14 @@ function renderUBM(strategy, analysis) {
       </div>`);
     show('ubm-quality-container', true);
   }
-  set('ubm-progress', `${ubm.turnos} turnos · ${ubm.insights} insights · ${ubm.aporias} aporías`);
-  if (strategy) set('ubm-strategy', `<span class="strategy-tag">${STRATEGY_LABELS[strategy]||strategy}</span>`);
+
+  const turns = ubm.turnos;
+  const insightsLabel = lang === 'es' ? 'insights' : 'insights';
+  const apoLabel = lang === 'es' ? 'aporías' : 'aporias';
+  const turnosLabel = lang === 'es' ? 'turnos' : 'turns';
+  set('ubm-progress', `${turns} ${turnosLabel} · ${ubm.insights} ${insightsLabel} · ${ubm.aporias} ${apoLabel}`);
+
+  if (strategy) set('ubm-strategy', `<span class="strategy-tag">${L(STRATEGY_LABELS, strategy)}</span>`);
   if (ubm.tesis.length) { show('ubm-tesis-container', true); set('ubm-tesis', ubm.tesis[ubm.tesis.length-1]); }
   if (ubm.falacias.length) { show('ubm-falacias-container', true); set('ubm-falacias', ubm.falacias.slice(-3).join(', ')); }
   if (analysis?.contradiccion) { show('ubm-contradiction-container', true); set('ubm-contradiction', analysis.contradiccion); }
@@ -2322,15 +2391,16 @@ window.sendMessage = async function() {
     const enriched = buildSocratesContext(analysis, msg);
     history.push({ role: 'user', content: enriched });
 
-    // CALL 3: Socratic response
-    const response = await callGroq(history, SYSTEM_SOCRATES, 350, 0.75);
-    const clean = response.replace(/\[[\s\S]*?\]/g,'').replace(/={3}[\s\S]*?===/g,'').trim();
+    // CALL 3: Socratic response — bilingual, extract active language
+    const rawResponse = await callGroq(history, SYSTEM_SOCRATES, 700, 0.75, true);
+    // Store full bilingual response in history (so both langs are available on lang switch)
+    history.push({ role: 'assistant', content: rawResponse });
+    // Extract only active language for display
+    const clean = extractLang(rawResponse, lang);
 
-    history.push({ role: 'assistant', content: clean });
-
-    // Track display messages (clean versions for UI + persistence)
+    // Track display messages — store raw bilingual response for live lang switching
     displayMessages.push({ role: 'user', text: msg });
-    displayMessages.push({ role: 'socrates', text: clean, strategy });
+    displayMessages.push({ role: 'socrates', textES: extractLang(rawResponse, 'es'), textEN: extractLang(rawResponse, 'en'), strategy });
 
     // Compress history sent to Groq when too long
     const MAX_HIST = 14;
@@ -2458,7 +2528,7 @@ function addMessage(role, text, strategy) {
     div.innerHTML = `<div style="width:100%;text-align:center;color:var(--text-muted);font-style:italic;font-size:14px;padding:8px">${text}</div>`;
   } else {
     const stratHtml = (role === 'socrates' && strategy)
-      ? `<div class="msg-strategy">${STRATEGY_LABELS[strategy]||strategy}</div>` : '';
+      ? `<div class="msg-strategy">${L(STRATEGY_LABELS, strategy)}</div>` : '';
     div.innerHTML = `
       <div class="msg-avatar">${avatarMap[role]||'?'}</div>
       <div class="msg-content">
@@ -2468,6 +2538,31 @@ function addMessage(role, text, strategy) {
   }
   container.appendChild(div);
   container.scrollTop = container.scrollHeight;
+}
+
+// Re-render all Socrates messages in the active language (called on lang toggle)
+function rerenderMessages() {
+  const container = document.getElementById('messages');
+  const socratesMsgs = container.querySelectorAll('.message.socrates');
+  let socratesIdx = 0;
+  displayMessages.forEach(m => {
+    if (m.role !== 'socrates') return;
+    const el = socratesMsgs[socratesIdx];
+    if (el) {
+      // Update bubble text
+      const bubble = el.querySelector('.msg-bubble');
+      if (bubble) {
+        const text = lang === 'es' ? (m.textES || m.text || '') : (m.textEN || m.text || '');
+        bubble.innerHTML = text.replace(/\n/g,'<br>');
+      }
+      // Update strategy tag
+      const strat = el.querySelector('.msg-strategy');
+      if (strat && m.strategy) {
+        strat.textContent = L(STRATEGY_LABELS, m.strategy);
+      }
+    }
+    socratesIdx++;
+  });
 }
 
 function showTyping(visible) {
@@ -2548,7 +2643,12 @@ onAuthStateChanged(auth, async (user) => {
       document.getElementById('examples-row').style.display = 'none';
 
       displayMessages.forEach(m => {
-        addMessage(m.role, m.text, m.strategy || null);
+        if (m.role === 'socrates') {
+          const text = lang === 'es' ? (m.textES || m.text || '') : (m.textEN || m.text || '');
+          addMessage('socrates', text, m.strategy || null);
+        } else {
+          addMessage(m.role, m.text, null);
+        }
       });
 
       // Restore UBM and plan panels
