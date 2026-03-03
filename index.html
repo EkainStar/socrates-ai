@@ -320,8 +320,61 @@ body {
 
 .provider-badge.active { color: var(--gold); border-color: rgba(201,168,76,0.4); }
 .provider-badge.groq { color: #7EB8D4; border-color: rgba(126,184,212,0.4); }
+.token-badge {
+  color: #7EB8D4;
+  border-color: rgba(126,184,212,0.35);
+  background: rgba(126,184,212,0.06);
+  font-size: 10px;
+  padding: 3px 8px;
+  white-space: nowrap;
+}
 .provider-badge.mistral { color: #D49E7E; border-color: rgba(212,158,126,0.4); }
 .provider-badge.error { color: #D47E7E; border-color: rgba(212,126,126,0.4); }
+
+/* ── TOKEN BOX (right panel) ── */
+.token-box {
+  background: rgba(126,184,212,0.04);
+  border: 1px solid rgba(126,184,212,0.18);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.token-box-section {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(126,184,212,0.1);
+}
+.token-box-section:last-child { border-bottom: none; }
+.token-box-totals { background: rgba(126,184,212,0.05); }
+.token-box-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  color: rgba(126,184,212,0.55);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+.token-mono { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-muted); }
+.token-blue { color: #7EB8D4; }
+.token-blue-dim { color: rgba(126,184,212,0.5); }
+.token-bar-track { height: 3px; background: rgba(126,184,212,0.12); border-radius: 2px; overflow: hidden; }
+.token-bar-fill { height: 100%; background: linear-gradient(90deg,rgba(126,184,212,0.45),#7EB8D4); border-radius: 2px; transition: width 0.4s ease; }
+.token-req-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 5px 0; border-bottom: 1px solid rgba(126,184,212,0.07);
+}
+.token-req-row:last-child { border-bottom: none; }
+.token-req-label { font-family: 'JetBrains Mono',monospace; font-size: 10px; color: var(--text-muted); }
+.token-req-val { font-family: 'JetBrains Mono',monospace; font-size: 10px; color: #7EB8D4; }
+.token-req-val.empty { color: rgba(126,184,212,0.3); font-style: italic; }
+.token-hist-row {
+  display: flex; justify-content: space-between; align-items: center;
+  font-family: 'JetBrains Mono',monospace; font-size: 10px;
+  padding: 3px 0; border-bottom: 1px solid rgba(126,184,212,0.06);
+}
+.token-hist-row:last-child { border-bottom: none; }
+.token-hist-turn { color: rgba(126,184,212,0.5); min-width: 20px; }
+.token-hist-total { color: #7EB8D4; font-weight: 600; }
+.token-empty-hint { color: rgba(126,184,212,0.4); font-style: italic; font-size: 11px; font-family: 'JetBrains Mono',monospace; }
+.badge-icon { margin-right: 2px; }
 
 .header-actions { display: flex; gap: 8px; align-items: center; }
 
@@ -1131,7 +1184,11 @@ body {
       <span class="icon">🏛️</span>
       <h2>SÓCRATES AI</h2>
     </div>
-    <div class="provider-badge" id="provider-badge">— sin actividad —</div>
+    <div style="display:flex;gap:5px;align-items:center" id="token-badges">
+      <div class="provider-badge token-badge" id="badge-analysis"><span class="badge-icon">🔍</span><span class="badge-val" id="bval-analysis">—</span></div>
+      <div class="provider-badge token-badge" id="badge-strategy"><span class="badge-icon">♟</span><span class="badge-val" id="bval-strategy">—</span></div>
+      <div class="provider-badge token-badge" id="badge-socrates"><span class="badge-icon">🏺</span><span class="badge-val" id="bval-socrates">—</span></div>
+    </div>
     <div class="header-actions">
       <button class="lang-toggle" onclick="toggleLang()" id="lang-btn">EN</button>
       <button class="btn-icon" onclick="toggleSidebar()" title="Panel de creencias">📊</button>
@@ -1192,7 +1249,7 @@ body {
         </div>
 
         <!-- Plan Estratégico -->
-        <div class="sidebar-section" id="plan-section" style="display:none">
+        <div class="sidebar-section" id="plan-section" style="display:block">
           <div class="sidebar-title">🎯 Plan Estratégico</div>
           <div class="ubm-item">
             <div class="ubm-label" id="plan-label-tema">Tema</div>
@@ -1249,9 +1306,7 @@ body {
       <!-- Input -->
       <div class="chat-input-area">
         <div class="examples-row" id="examples-row">
-          <button class="example-pill" id="random-topic-btn" onclick="suggestRandomTopic()">
-            🎲 Sugerir un tema
-          </button>
+          <button class="example-pill" id="random-topic-btn" onclick="suggestRandomTopic()" data-i18n="btn.random">🎲 Sugerir un tema</button>
         </div>
         <div class="input-wrapper">
           <textarea
@@ -1289,6 +1344,63 @@ body {
       <div class="keys-info" id="keys-info"></div>
     </div>
 
+    <div class="greek-divider">· · · ⌘ · · ·</div>
+
+    <!-- Token usage -->
+    <div class="panel-section" id="tokens-panel-section">
+      <div class="panel-section-title" id="tokens-title">Tokens</div>
+      <div class="token-box">
+
+        <!-- Last turn: 3 request breakdown — always visible -->
+        <div class="token-box-section">
+          <div class="token-box-label" id="tokens-turn-label">ÚLTIMO TURNO</div>
+          <!-- 3 fixed rows, always shown -->
+          <div class="token-req-row" id="token-row-analysis">
+            <span class="token-req-label">🔍 <span id="tlabel-analysis">Análisis</span></span>
+            <span class="token-req-val empty" id="tval-analysis">— sin actividad —</span>
+          </div>
+          <div class="token-req-row" id="token-row-strategy">
+            <span class="token-req-label">♟ <span id="tlabel-strategy">Estrategia</span></span>
+            <span class="token-req-val empty" id="tval-strategy">— sin actividad —</span>
+          </div>
+          <div class="token-req-row" id="token-row-socrates">
+            <span class="token-req-label">🏺 <span id="tlabel-socrates">Sócrates</span></span>
+            <span class="token-req-val empty" id="tval-socrates">— sin actividad —</span>
+          </div>
+          <div class="token-req-row" id="token-row-turn-total" style="border-top:1px solid rgba(126,184,212,0.12);margin-top:2px;padding-top:6px">
+            <span class="token-req-label" style="letter-spacing:1px" id="tlabel-turn-total">TURNO TOTAL</span>
+            <span class="token-req-val empty" id="tval-turn-total">—</span>
+          </div>
+        </div>
+
+        <!-- Total session bar -->
+        <div class="token-box-section token-box-totals" id="token-totals-wrap">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <span class="token-mono" id="tokens-total-label">TOTAL SESIÓN</span>
+            <span class="token-mono token-blue" id="token-total-num">0 tkn</span>
+          </div>
+          <div class="token-bar-track">
+            <div class="token-bar-fill" id="token-total-fill" style="width:0%"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:4px">
+            <span class="token-mono">Key: <span class="token-blue" id="token-key-used">—</span></span>
+            <span class="token-mono" id="token-rate-left">—</span>
+          </div>
+        </div>
+
+        <!-- History per turn — expandable -->
+        <div class="token-box-section">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div class="token-box-label" id="tokens-history-label">HISTORIAL</div>
+            <span class="token-mono" id="token-hist-count" style="opacity:0.5;font-size:9px"></span>
+          </div>
+          <div id="token-history-list" style="max-height:240px;overflow-y:auto;margin-top:6px">
+            <div class="token-empty-hint">—</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
     <div class="greek-divider">· · · ⌘ · · ·</div>
 
     <!-- Account -->
@@ -1402,6 +1514,7 @@ const translations = {
     'strategy.fundamento': 'fundamento',
     'no.keys': 'Sin claves API. Añade una clave de Groq para comenzar.',
     'keys.count': (n, max) => `${n}/${max} claves · usando la ${currentKeyIndex + 1}`,
+    'btn.random': '🎲 Sugerir un tema',
     'welcome.socrates': 'Bienvenido. Soy Sócrates. ¿Sobre qué deseas reflexionar hoy?',
     'reset.msg': 'Conversación reiniciada. ¿Sobre qué deseas reflexionar hoy?',
     'err.no.keys': 'No hay claves API disponibles. Añade una en Ajustes (⚙️).',
@@ -1455,6 +1568,7 @@ const translations = {
     'strategy.fundamento': 'foundation',
     'no.keys': 'No API keys. Add a Groq key to begin.',
     'keys.count': (n, max) => `${n}/${max} keys · using #${currentKeyIndex + 1}`,
+    'btn.random': '🎲 Suggest a topic',
     'welcome.socrates': 'Welcome. I am Socrates. What shall we examine today?',
     'reset.msg': 'Conversation reset. What shall we examine today?',
     'err.no.keys': 'No API keys available. Add one in Settings (⚙️).',
@@ -1485,6 +1599,9 @@ function applyTranslations() {
   const input = document.getElementById('message-input');
   if (input) input.placeholder = t('placeholder.input');
   document.getElementById('lang-btn').textContent = lang === 'es' ? 'EN' : 'ES';
+  // FIX: force random button text (data-i18n sometimes missed if button was hidden)
+  const rBtn = document.getElementById('random-topic-btn');
+  if (rBtn) rBtn.innerHTML = t('btn.random');
 }
 
 window.toggleLang = function() {
@@ -1494,7 +1611,8 @@ window.toggleLang = function() {
   renderKeysInfo();
   rerenderMessages();        // re-render message bubbles + strategy tags
   renderUBM(ubm.ultimoTipo, null);  // re-render all panel labels + values
-  renderPlan();              // re-render plan panel labels
+  renderPlan();
+  renderTokens();
 };
 
 // ─── SCREEN MANAGEMENT ─────────────────────
@@ -1556,6 +1674,7 @@ window.register = async function() {
 };
 
 window.logout = async function() {
+  authInitialized = false;
   await signOut(auth);
 };
 
@@ -1605,9 +1724,8 @@ async function loadUserData(user) {
         }
         return null;
       }).filter(Boolean);
-      // Ensure first non-exhausted key is marked active
-      const firstActive = apiKeys.findIndex(k => k.status !== 'exhausted');
-      if (firstActive !== -1) apiKeys[firstActive].status = 'active';
+      // FIX 6: normalize statuses using central function
+      normalizeKeyStatuses();
       currentKeyIndex = 0;
       // Last conversation
       if (data.lastConversation) {
@@ -1617,8 +1735,9 @@ async function loadUserData(user) {
         displayMessages = conv.displayMessages || [];
         // Restore UBM state
         if (conv.ubm) Object.assign(ubm, conv.ubm);
-        // Restore plan
         if (conv.plan) Object.assign(plan, conv.plan);
+        if (conv.tokensHistory) tokensHistory = conv.tokensHistory;
+        if (conv.lastTurnTokens) Object.assign(lastTurnTokens, conv.lastTurnTokens);
       }
     } else {
       apiKeys = [];
@@ -1651,6 +1770,8 @@ async function saveConversation() {
         displayMessages,
         ubm: { ...ubm },
         plan: { ...plan },
+        tokensHistory: tokensHistory.slice(-50), // keep last 50 turns
+        lastTurnTokens: { ...lastTurnTokens },
         updatedAt: Date.now()
       }
     });
@@ -1668,6 +1789,22 @@ async function clearConversation() {
 // ─── API KEYS MANAGEMENT ────────────────────
 // apiKeys = [{key: 'gsk_...', status: 'active'|'pending'|'exhausted'}]
 const MAX_KEYS = 20;
+
+// FIX 6: Centralized key status normalization
+// Exactly one key should be 'active' (the first non-exhausted one)
+// All others should be 'pending' or 'exhausted'
+function normalizeKeyStatuses() {
+  let foundActive = false;
+  apiKeys.forEach((k, i) => {
+    if (k.status === 'exhausted') return; // leave exhausted alone
+    if (!foundActive) {
+      k.status = 'active';
+      foundActive = true;
+    } else {
+      k.status = 'pending';
+    }
+  });
+}
 
 async function validateGroqKey(key) {
   try {
@@ -1704,17 +1841,17 @@ window.addApiKey = async function() {
 
   if (!valid) { toast(lang === 'es' ? 'Clave inválida o rechazada' : 'Invalid or rejected key', 'error'); return; }
 
-  // Insert at beginning if no keys, else before exhausted ones
+  // Insert before any exhausted keys so it goes into active rotation immediately
   const firstExhausted = apiKeys.findIndex(k => k.status === 'exhausted');
-  const newKey = { key, status: apiKeys.length === 0 ? 'active' : 'pending' };
+  const newKey = { key, status: 'pending', tokensUsed: 0 };
   if (firstExhausted === -1) {
     apiKeys.push(newKey);
   } else {
     apiKeys.splice(firstExhausted, 0, newKey);
   }
 
-  // First key is always active
-  if (apiKeys.length === 1) apiKeys[0].status = 'active';
+  // Always normalize: exactly ONE key active (the first non-exhausted)
+  normalizeKeyStatuses();
 
   input.value = '';
   await saveUserData();
@@ -1724,10 +1861,7 @@ window.addApiKey = async function() {
 
 window.removeApiKey = async function(idx) {
   apiKeys.splice(idx, 1);
-  // Ensure first key is active if any remain
-  if (apiKeys.length > 0 && apiKeys[0].status !== 'exhausted') {
-    apiKeys[0].status = 'active';
-  }
+  normalizeKeyStatuses();
   await saveUserData();
   renderApiKeys();
   toast(t('toast.key.removed'));
@@ -1744,15 +1878,27 @@ function renderApiKeys() {
       const status = entry.status || 'pending';
       const div = document.createElement('div');
       div.className = `api-key-item${status === 'exhausted' ? ' exhausted-row' : ''}`;
-      const label = status === 'active'
-        ? `<span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#6B9B6B;letter-spacing:1px">EN USO</span>`
+      const statusLabel = status === 'active'
+        ? `<span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#6B9B6B;letter-spacing:1px">${lang==='es'?'EN USO':'ACTIVE'}</span>`
         : status === 'exhausted'
-        ? `<span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#C97B30;letter-spacing:1px">AGOTADA</span>`
+        ? `<span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#C97B30;letter-spacing:1px">${lang==='es'?'AGOTADA':'EXHAUSTED'}</span>`
         : '';
+      let tokenLine = '';
+      if (entry.rateLimitRemaining != null && entry.rateLimit != null) {
+        const rem = entry.rateLimitRemaining.toLocaleString();
+        const tot = entry.rateLimit.toLocaleString();
+        const pct = Math.round(entry.rateLimitRemaining / entry.rateLimit * 100);
+        tokenLine = `<div style="font-size:10px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;margin-top:2px">${rem}/${tot} tkn · ${pct}% ${lang==='es'?'libre':'free'}</div>`;
+      } else if (entry.tokensUsed) {
+        tokenLine = `<div style="font-size:10px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;margin-top:2px">${entry.tokensUsed.toLocaleString()} tkn ${lang==='es'?'usados':'used'}</div>`;
+      }
       div.innerHTML = `
         <span class="key-index" style="color:${status==='active'?'var(--gold)':'var(--text-muted)'}">${i + 1}</span>
-        <span class="key-value" title="${masked}">${masked}</span>
-        ${label}
+        <div style="flex:1;min-width:0;overflow:hidden">
+          <div class="key-value" title="${masked}">${masked}</div>
+          ${tokenLine}
+        </div>
+        ${statusLabel}
         <span class="key-status ${status}"></span>
         <button class="btn-remove" onclick="removeApiKey(${i})">✕</button>
       `;
@@ -1840,9 +1986,23 @@ async function callGroq(messages, systemPrompt, maxTokens = 300, temperature = 0
 
       const data = await response.json();
       apiKeys[idx].status = 'active';
+
+      // Capture token usage from response
+      if (data.usage) {
+        if (!apiKeys[idx].tokensUsed) apiKeys[idx].tokensUsed = 0;
+        apiKeys[idx].tokensUsed += data.usage.total_tokens || 0;
+        apiKeys[idx].lastUsage = data.usage; // {prompt_tokens, completion_tokens, total_tokens}
+      }
+      // Capture rate limit headers (tokens remaining for this key's window)
+      const limitTotal = response.headers.get('x-ratelimit-limit-tokens');
+      const limitRemaining = response.headers.get('x-ratelimit-remaining-tokens');
+      if (limitTotal) apiKeys[idx].rateLimit = parseInt(limitTotal);
+      if (limitRemaining) apiKeys[idx].rateLimitRemaining = parseInt(limitRemaining);
+
       updateProviderBadge(idx);
       renderApiKeys();
-      return data.choices[0].message.content;
+      // Return both content and usage so callers can track per-call tokens
+      return { content: data.choices[0].message.content, usage: data.usage || null };
 
     } catch(e) {
       if (e.message === 'NO_KEYS' || e.message === 'ALL_EXHAUSTED') throw e;
@@ -1854,27 +2014,26 @@ async function callGroq(messages, systemPrompt, maxTokens = 300, temperature = 0
 }
 
 function exhaustKeyToEnd(idx) {
-  // Mark as exhausted, move to end of array
   const [entry] = apiKeys.splice(idx, 1);
   entry.status = 'exhausted';
   apiKeys.push(entry);
-  // Mark new first key as active if it's not exhausted
-  if (apiKeys.length > 0 && apiKeys[0].status !== 'exhausted') {
-    apiKeys[0].status = 'active';
-  }
+  normalizeKeyStatuses(); // FIX 6: always use central normalizer
 }
 
 function updateProviderBadge(keyIdx) {
-  const badge = document.getElementById('provider-badge');
-  const entry = apiKeys[keyIdx];
-  const masked = entry ? (entry.key.substring(0, 8) + '···' + entry.key.slice(-4)) : '?';
-  badge.textContent = `Groq · ${masked}`;
-  badge.className = 'provider-badge groq';
+  // The old single badge is gone — token info is now in the 3 badges + settings panel
+  // Just trigger a token render update if settings panel is open
+  const panel = document.getElementById('settings-panel');
+  if (panel && panel.classList.contains('open')) renderTokens();
 }
 
 // ─── STATE ──────────────────────────────────
 let history = [];
 let historyResumen = '';
+// Per-turn token tracking for the 3 calls
+let lastTurnTokens = { analysis: null, strategy: null, socrates: null };
+// Full per-turn history: [{turn, analysis:{p,c,t}, strategy:{p,c,t}, socrates:{p,c,t}, total}]
+let tokensHistory = [];
 let ubm = {
   tesis: [], tesis_implicitas: [], contradicciones: [], falacias: [],
   conceptosSinDefinir: [], calidadArgumentos: [], patronRetorico: '',
@@ -2065,8 +2224,9 @@ async function analyzeMessage(userMsg) {
   const tesisPrev = ubm.tesis.slice(-3).join('; ') || 'none';
   const prompt = `DIALOGUE HISTORY:\n${histStr}\n\nPREVIOUS THESES: ${tesisPrev}\nCURRENT PHASE: ${ubm.faseSocratica}\nEPISTEMIC STATE: ${ubm.estadoEpistemico}\n\nCURRENT MESSAGE:\n${userMsg}`;
   try {
-    const text = await callGroq([{role:'user',content:prompt}], SYSTEM_ANALISIS, 400, 0.15);
-    const clean = text.replace(/```json\s*/g,'').replace(/```\s*/g,'');
+    const result = await callGroq([{role:'user',content:prompt}], SYSTEM_ANALISIS, 400, 0.15);
+    if (result.usage) lastTurnTokens.analysis = result.usage;
+    const clean = result.content.replace(/```json\s*/g,'').replace(/```\s*/g,'');
     const match = clean.match(/\{[\s\S]*\}/);
     if (match) return JSON.parse(match[0]);
   } catch(e) { throw e; }
@@ -2080,22 +2240,18 @@ async function analyzeMessage(userMsg) {
 }
 
 async function updatePlan(analysis, userMsg) {
-  // Update plan when: new topic, or plan is empty, or significant position shift
-  const needsUpdate = !plan.tema || analysis.nuevo_tema || 
-    (analysis.tesis_principal && plan.paso_actual === 0) ||
-    (plan.pasos.length > 0 && plan.paso_actual >= plan.pasos.length);
-
-  if (!needsUpdate) {
-    // Just advance step if current step seems complete
-    return;
-  }
+  // Update plan EVERY TURN when topic exists — strategy evolves with each question
+  const hasTopic = plan.tema || analysis.tema_detectado || analysis.tesis_principal;
+  if (!hasTopic) return; // user said nonsense, no topic yet — keep plan empty ("-")
 
   const histStr = history.length ? summarizeHistory(history.slice(-6)) : 'none';
-  const prompt = `CONVERSATION SO FAR:\n${histStr}\n\nUSER'S CURRENT POSITION: ${analysis.tesis_principal || userMsg}\nTOPIC: ${analysis.tema_detectado || plan.tema || 'unknown'}\nIMPLICIT ASSUMPTIONS: ${(analysis.tesis_implicitas||[]).join('; ') || 'none'}\n\nDesign the strategic plan to lead this user to their internal contradiction.`;
+  const stepInfo = plan.pasos.length ? `Current step: ${plan.paso_actual + 1}/${plan.pasos.length}` : 'No steps yet';
+  const prompt = `CONVERSATION SO FAR:\n${histStr}\n\nUSER'S CURRENT POSITION: ${analysis.tesis_principal || userMsg}\nTOPIC: ${analysis.tema_detectado || plan.tema || 'unknown'}\nIMPLICIT ASSUMPTIONS: ${(analysis.tesis_implicitas||[]).join('; ') || 'none'}\n${stepInfo}\nCONTRADICTION REACHED: ${ubm.contradiccionAlcanzada}\n\nUpdate the strategic plan. Keep existing steps if topic unchanged; only regenerate if topic shifted. Advance paso_actual based on dialogue progress.`;
   
   try {
-    const text = await callGroq([{role:'user',content:prompt}], SYSTEM_ESTRATEGA, 500, 0.3);
-    const clean = text.replace(/```json\s*/g,'').replace(/```\s*/g,'');
+    const result = await callGroq([{role:'user',content:prompt}], SYSTEM_ESTRATEGA, 500, 0.3);
+    if (result.usage) lastTurnTokens.strategy = result.usage;
+    const clean = result.content.replace(/```json\s*/g,'').replace(/```\s*/g,'');
     const match = clean.match(/\{[\s\S]*\}/);
     if (match) {
       const newPlan = JSON.parse(match[0]);
@@ -2316,45 +2472,210 @@ function renderUBM(strategy, analysis) {
   const turnosLabel = lang === 'es' ? 'turnos' : 'turns';
   set('ubm-progress', `${turns} ${turnosLabel} · ${ubm.insights} ${insightsLabel} · ${ubm.aporias} ${apoLabel}`);
 
-  if (strategy) set('ubm-strategy', `<span class="strategy-tag">${L(STRATEGY_LABELS, strategy)}</span>`);
+  // Strategy — always render, dash if none
+  set('ubm-strategy', strategy
+    ? `<span class="strategy-tag">${L(STRATEGY_LABELS, strategy)}</span>`
+    : '—');
+
+  // Conditional fields — show or hide and clear
   if (ubm.tesis.length) { show('ubm-tesis-container', true); set('ubm-tesis', ubm.tesis[ubm.tesis.length-1]); }
+  else { show('ubm-tesis-container', false); set('ubm-tesis', ''); }
+
   if (ubm.falacias.length) { show('ubm-falacias-container', true); set('ubm-falacias', ubm.falacias.slice(-3).join(', ')); }
+  else { show('ubm-falacias-container', false); }
+
   if (analysis?.contradiccion) { show('ubm-contradiction-container', true); set('ubm-contradiction', analysis.contradiccion); }
+  else if (!ubm.contradicciones.length) { show('ubm-contradiction-container', false); }
+
   if (ubm.patronRetorico) { show('ubm-patron-container', true); set('ubm-patron', ubm.patronRetorico); }
+  else { show('ubm-patron-container', false); }
 }
+
+// ─── TOKEN RENDERING ─────────────────────────
+function fmtTok_OLD_REMOVED(n) { return n != null ? n.toLocaleString() : '—'; }
+
+function updateTokenBadges() {
+  // Update the 3 header badges with token counts from last turn
+  const setB = (valId, data) => {
+    const el = document.getElementById(valId);
+    if (!el) return;
+    if (data && data.total_tokens != null) {
+      el.textContent = fmtTok(data.total_tokens);
+      el.style.color = '#7EB8D4';
+    } else {
+      el.textContent = '—';
+      el.style.color = 'rgba(126,184,212,0.4)';
+    }
+  };
+  setB('bval-analysis', lastTurnTokens.analysis);
+  setB('bval-strategy', lastTurnTokens.strategy);
+  setB('bval-socrates', lastTurnTokens.socrates);
+}
+
+function fmtTok(n) {
+  if (n == null) return '—';
+  return n >= 1000 ? (n/1000).toFixed(1) + 'k' : String(n);
+}
+
+function renderTokens() {
+  updateTokenBadges();
+  const ll = typeof lang !== 'undefined' ? lang : 'es';
+
+  // i18n labels
+  const setTxt = (id, val) => { const e = document.getElementById(id); if(e) e.textContent = val; };
+  setTxt('tokens-title',         ll === 'es' ? 'Tokens'         : 'Tokens');
+  setTxt('tokens-turn-label',    ll === 'es' ? 'ÚLTIMO TURNO'   : 'LAST TURN');
+  setTxt('tokens-history-label', ll === 'es' ? 'HISTORIAL'      : 'HISTORY');
+  setTxt('tokens-total-label',   ll === 'es' ? 'TOTAL SESIÓN'   : 'SESSION TOTAL');
+  setTxt('tlabel-analysis',      ll === 'es' ? 'Análisis'       : 'Analysis');
+  setTxt('tlabel-strategy',      ll === 'es' ? 'Estrategia'     : 'Strategy');
+  setTxt('tlabel-socrates',      ll === 'es' ? 'Sócrates'       : 'Socrates');
+  setTxt('tlabel-turn-total',    ll === 'es' ? 'TURNO TOTAL'    : 'TURN TOTAL');
+
+  // ── Last turn: 3 fixed rows ───────────────────────────────────────────────
+  const last = tokensHistory.length ? tokensHistory[tokensHistory.length - 1] : null;
+
+  const setReqRow = (valId, data) => {
+    const el = document.getElementById(valId);
+    if (!el) return;
+    if (!last || !data) {
+      el.className = 'token-req-val empty';
+      el.innerHTML = ll === 'es' ? '— sin actividad —' : '— no activity —';
+    } else {
+      const t = data.total_tokens; const p = data.prompt_tokens; const c = data.completion_tokens;
+      el.className = 'token-req-val';
+      el.innerHTML = `${fmtTok(t)} <span style="font-size:9px;opacity:0.55">(↑${fmtTok(p)} ↓${fmtTok(c)})</span>`;
+    }
+  };
+
+  setReqRow('tval-analysis', last?.analysis);
+  setReqRow('tval-strategy', last?.strategy);
+  setReqRow('tval-socrates', last?.socrates);
+
+  const ttEl = document.getElementById('tval-turn-total');
+  if (ttEl) {
+    if (!last) {
+      ttEl.className = 'token-req-val empty'; ttEl.textContent = '—';
+    } else {
+      ttEl.className = 'token-req-val'; ttEl.style.fontWeight = '600';
+      ttEl.textContent = fmtTok(last.total) + ' tkn';
+    }
+  }
+
+  // ── Session total bar ─────────────────────────────────────────────────────
+  const sessionTotal = tokensHistory.reduce((s, t) => s + (t.total || 0), 0);
+  const MAX_SESSION_TOKENS = 100000; // visual max for bar
+  const pct = Math.min(100, (sessionTotal / MAX_SESSION_TOKENS * 100)).toFixed(1);
+  setTxt('token-total-num', fmtTok(sessionTotal) + ' tkn');
+  const fillEl = document.getElementById('token-total-fill');
+  if (fillEl) fillEl.style.width = pct + '%';
+
+  // Active key info
+  const activeKey = apiKeys.find(k => k.status === 'active');
+  if (activeKey) {
+    const masked = activeKey.key.substring(0, 8) + '···' + activeKey.key.slice(-4);
+    setTxt('token-key-used', masked);
+    if (activeKey.rateLimitRemaining != null && activeKey.rateLimit != null) {
+      const rem = fmtTok(activeKey.rateLimitRemaining);
+      const tot = fmtTok(activeKey.rateLimit);
+      setTxt('token-rate-left', rem + '/' + tot + ' tkn ' + (ll==='es'?'libre':'free'));
+    } else if (activeKey.tokensUsed) {
+      setTxt('token-rate-left', fmtTok(activeKey.tokensUsed) + ' tkn ' + (ll==='es'?'usados':'used'));
+    } else {
+      setTxt('token-rate-left', '—');
+    }
+  } else {
+    setTxt('token-key-used', '—');
+    setTxt('token-rate-left', '—');
+  }
+
+  // ── History list: one row per turn, newest first ──────────────────────────
+  const histEl = document.getElementById('token-history-list');
+  const countEl = document.getElementById('token-hist-count');
+  if (histEl) {
+    if (!tokensHistory.length) {
+      histEl.innerHTML = '<div class="token-empty-hint">—</div>';
+      if (countEl) countEl.textContent = '';
+    } else {
+      if (countEl) countEl.textContent = tokensHistory.length + (ll==='es'?' turnos':' turns');
+      histEl.innerHTML = [...tokensHistory].reverse().map((t, ri) => {
+        const num = tokensHistory.length - ri;
+        const a = t.analysis?.total_tokens;
+        const s = t.strategy?.total_tokens;
+        const r = t.socrates?.total_tokens;
+        const tot = t.total || 0;
+        const aStr = a != null ? fmtTok(a) : '—';
+        const sStr = s != null ? fmtTok(s) : '—';
+        const rStr = r != null ? fmtTok(r) : '—';
+        return `<div class="token-hist-row">
+          <span class="token-hist-turn">T${num}</span>
+          <span class="token-blue-dim" style="font-family:'JetBrains Mono',monospace;font-size:10px" title="Análisis">🔍${aStr}</span>
+          <span class="token-blue-dim" style="font-family:'JetBrains Mono',monospace;font-size:10px" title="Estrategia">♟${sStr}</span>
+          <span class="token-blue-dim" style="font-family:'JetBrains Mono',monospace;font-size:10px" title="Sócrates">🏺${rStr}</span>
+          <span class="token-hist-total">${fmtTok(tot)}</span>
+        </div>`;
+      }).join('');
+      histEl.scrollTop = 0;
+    }
+  }
+
+}
+
 
 function renderPlan() {
   const el = document.getElementById('plan-section');
   if (!el) return;
-  if (!plan.tema || !plan.pasos.length) { el.style.display = 'none'; return; }
+  // Always visible — show dashes when no topic yet
   el.style.display = 'block';
 
-  const tema = document.getElementById('plan-tema');
-  const objetivo = document.getElementById('plan-objetivo');
-  const pasosList = document.getElementById('plan-pasos');
-  const definicion = document.getElementById('plan-definicion');
-  const contradiccionBadge = document.getElementById('plan-contradiccion-badge');
+  const ll = typeof lang !== 'undefined' ? lang : 'es';
+  const planTitle = el.querySelector('.sidebar-title');
+  if (planTitle) planTitle.textContent = ll === 'es' ? '🎯 Plan Estratégico' : '🎯 Strategic Plan';
 
-  if (tema) tema.textContent = plan.tema;
-  if (objetivo) objetivo.textContent = plan.contradiccion_objetivo || '—';
-  if (definicion) definicion.textContent = plan.definicion_en_construccion || '—';
-  if (contradiccionBadge) contradiccionBadge.style.display = ubm.contradiccionAlcanzada ? 'block' : 'none';
+  const planLabels = {
+    'plan-label-tema':       { es: 'Tema',                       en: 'Topic' },
+    'plan-label-objetivo':   { es: 'Contradicción objetivo',     en: 'Target contradiction' },
+    'plan-label-pasos':      { es: 'Pasos del plan',             en: 'Plan steps' },
+    'plan-label-definicion': { es: 'Definición en construcción', en: 'Definition in progress' },
+  };
+  Object.entries(planLabels).forEach(([id, map]) => {
+    const e2 = document.getElementById(id);
+    if (e2) e2.textContent = map[ll] || map.es;
+  });
 
-  if (pasosList) {
-    pasosList.innerHTML = '';
-    plan.pasos.forEach((paso, i) => {
-      const div = document.createElement('div');
-      const isCurrent = i === plan.paso_actual && !ubm.contradiccionAlcanzada;
-      const isDone = paso.completado || i < plan.paso_actual;
-      div.style.cssText = `display:flex;gap:8px;align-items:flex-start;margin-bottom:8px;opacity:${isDone?'0.5':isCurrent?'1':'0.7'}`;
-      div.innerHTML = `
-        <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:${isCurrent?'var(--gold)':isDone?'#6B9B6B':'var(--text-muted)'};flex-shrink:0;margin-top:2px">${isDone?'✓':isCurrent?'▶':'○'}</span>
-        <span style="font-size:12px;color:${isCurrent?'var(--text-primary)':'var(--text-secondary)'};line-height:1.5">${paso.descripcion}</span>`;
-      pasosList.appendChild(div);
-    });
+  const badge = document.getElementById('plan-contradiccion-badge');
+  if (badge) {
+    badge.textContent = ll === 'es' ? '✦ CONTRADICCIÓN ALCANZADA ✦' : '✦ CONTRADICTION REACHED ✦';
+    badge.style.display = ubm.contradiccionAlcanzada ? 'block' : 'none';
+  }
+
+  const temaEl   = document.getElementById('plan-tema');
+  const objEl    = document.getElementById('plan-objetivo');
+  const pasosEl  = document.getElementById('plan-pasos');
+  const defEl    = document.getElementById('plan-definicion');
+
+  if (temaEl)  temaEl.textContent  = plan.tema || '—';
+  if (objEl)   objEl.textContent   = plan.contradiccion_objetivo || '—';
+  if (defEl)   defEl.textContent   = plan.definicion_en_construccion || '—';
+
+  if (pasosEl) {
+    if (!plan.pasos || !plan.pasos.length) {
+      pasosEl.innerHTML = '<div style="color:var(--text-muted);font-size:12px;font-style:italic">—</div>';
+    } else {
+      pasosEl.innerHTML = '';
+      plan.pasos.forEach((paso, i) => {
+        const isCurrent = i === plan.paso_actual && !ubm.contradiccionAlcanzada;
+        const isDone    = paso.completado || i < plan.paso_actual;
+        const div = document.createElement('div');
+        div.style.cssText = `display:flex;gap:8px;align-items:flex-start;margin-bottom:8px;opacity:${isDone?'0.45':isCurrent?'1':'0.65'}`;
+        div.innerHTML = `
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:${isCurrent?'var(--gold)':isDone?'#6B9B6B':'var(--text-muted)'};flex-shrink:0;margin-top:2px">${isDone?'✓':isCurrent?'▶':'○'}</span>
+          <span style="font-size:12px;color:${isCurrent?'var(--text-primary)':'var(--text-secondary)'};line-height:1.5">${paso.descripcion}</span>`;
+        pasosEl.appendChild(div);
+      });
+    }
   }
 }
-
 // ─── SEND MESSAGE ───────────────────────────
 window.sendMessage = async function() {
   const input = document.getElementById('message-input');
@@ -2370,9 +2691,8 @@ window.sendMessage = async function() {
   const wm = document.getElementById('welcome-msg');
   if (wm) wm.style.display = 'none';
 
-  addMessage('user', msg);
+  const userMsgEl = addMessage('user', msg);
   showTyping(true);
-  // Track in displayMessages immediately so restore works even if API fails
 
   try {
     // CALL 1: Deep cognitive analysis
@@ -2383,8 +2703,8 @@ window.sendMessage = async function() {
     // CALL 2: Update strategic plan (async, non-blocking for UX)
     updatePlan(analysis, msg).catch(()=>{});
 
-    // Decide strategy
-    const strategy = decideStrategy(analysis);
+    // Decide strategy — always set a fallback so the tag is always shown
+    const strategy = decideStrategy(analysis) || analysis.estrategia_recomendada || 'fundamento_epistemico';
     ubm.ultimoTipo = strategy;
 
     // Build enriched context for Socrates
@@ -2392,7 +2712,9 @@ window.sendMessage = async function() {
     history.push({ role: 'user', content: enriched });
 
     // CALL 3: Socratic response — bilingual, extract active language
-    const rawResponse = await callGroq(history, SYSTEM_SOCRATES, 700, 0.75, true);
+    const socratesResult = await callGroq(history, SYSTEM_SOCRATES, 700, 0.75, true);
+    if (socratesResult.usage) lastTurnTokens.socrates = socratesResult.usage;
+    const rawResponse = socratesResult.content;
     // Store full bilingual response in history (so both langs are available on lang switch)
     history.push({ role: 'assistant', content: rawResponse });
     // Extract only active language for display
@@ -2418,14 +2740,40 @@ window.sendMessage = async function() {
 
     showTyping(false);
     addMessage('socrates', clean, strategy);
+
+    // Record this turn's token usage
+    const turnTotal = (lastTurnTokens.analysis?.total_tokens||0) +
+                      (lastTurnTokens.strategy?.total_tokens||0) +
+                      (lastTurnTokens.socrates?.total_tokens||0);
+    tokensHistory.push({
+      turn: ubm.turnos,
+      analysis:  lastTurnTokens.analysis  ? {...lastTurnTokens.analysis}  : null,
+      strategy:  lastTurnTokens.strategy  ? {...lastTurnTokens.strategy}  : null,
+      socrates:  lastTurnTokens.socrates  ? {...lastTurnTokens.socrates}  : null,
+      total: turnTotal
+    });
+
     renderUBM(strategy, analysis);
     renderPlan();
+    renderTokens();
 
     // Save to Firebase (non-blocking)
     saveConversation().catch(() => {});
 
   } catch(e) {
     showTyping(false);
+    // FIX 5: Remove orphan user message and restore input so user retries cleanly
+    if (userMsgEl && userMsgEl.parentNode) {
+      userMsgEl.remove();
+      input.value = msg;
+      autoResize(input);
+    }
+    // If no conversation yet, restore welcome screen so it's not blank
+    if (displayMessages.length === 0) {
+      const wm = document.getElementById('welcome-msg');
+      if (wm) wm.style.display = '';
+      document.getElementById('examples-row').style.display = 'flex';
+    }
     let errMsg = e.message === 'NO_KEYS' ? t('err.no.keys') :
                  e.message === 'ALL_EXHAUSTED' ? t('err.exhausted') : t('err.generic');
     addMessage('system', errMsg);
@@ -2448,61 +2796,95 @@ window.useExample = function(el) {
   sendMessage();
 };
 
-const TEMAS_FILOSOFICOS = [
-  // Ética
-  "El fin justifica los medios",
-  "Nadie hace el mal a sabiendas",
-  "La moral es solo una convención social",
-  "Tenemos obligaciones con quienes nunca conoceremos",
-  "Es posible ser completamente imparcial",
-  "La bondad innata del ser humano",
-  "Sin castigo no hay moral verdadera",
-  // Libertad
-  "El libre albedrío es una ilusión",
-  "Somos más libres cuando tenemos menos opciones",
-  "La libertad absoluta es imposible en sociedad",
-  "Podemos elegir quiénes somos",
-  // Conocimiento
-  "Solo sé que no sé nada",
-  "Los sentidos nos engañan siempre",
-  "Hay verdades que la razón no puede alcanzar",
-  "El conocimiento verdadero es imposible",
-  "La duda es el principio de la sabiduría",
-  // Justicia
-  "Una ley injusta no es ley",
-  "La justicia y la legalidad son lo mismo",
-  "Nadie merece sufrir",
-  "Castigar es siempre una forma de venganza",
-  // Identidad
-  "Somos los mismos a los 7 que a los 70 años",
-  "Sin memoria no hay identidad",
-  "El yo no existe, es una construcción",
-  "Somos lo que hacemos, no lo que pensamos",
-  // Felicidad
-  "La felicidad es el único fin verdadero",
-  "El placer y la felicidad son lo mismo",
-  "Podemos ser felices sabiendo que moriremos",
-  "El sufrimiento es necesario para la sabiduría",
-  // Existencia
-  "La vida no tiene sentido intrínseco",
-  "Morir bien es más importante que vivir bien",
-  "La existencia precede a la esencia",
-  "El tiempo es una ilusión de la mente",
-  // Política
-  "El poder corrompe inevitablemente",
-  "El bien común justifica sacrificar al individuo",
-  "La democracia es el menos malo de los sistemas",
-  // Misc profundas
-  "El amor verdadero es desinteresado",
-  "El arte puede decir verdades que la filosofía no puede",
-  "Dios existe porque la nada es imposible",
-  "La ciencia no puede responder las preguntas más importantes",
-];
+const TEMAS = {
+  es: [
+    "El fin justifica los medios",
+    "Nadie hace el mal a sabiendas",
+    "La moral es solo una convención social",
+    "Tenemos obligaciones con quienes nunca conoceremos",
+    "Es posible ser completamente imparcial",
+    "La bondad innata del ser humano",
+    "Sin castigo no hay moral verdadera",
+    "El libre albedrío es una ilusión",
+    "Somos más libres cuando tenemos menos opciones",
+    "La libertad absoluta es imposible en sociedad",
+    "Podemos elegir quiénes somos",
+    "Solo sé que no sé nada",
+    "Los sentidos nos engañan siempre",
+    "Hay verdades que la razón no puede alcanzar",
+    "El conocimiento verdadero es imposible",
+    "La duda es el principio de la sabiduría",
+    "Una ley injusta no es ley",
+    "La justicia y la legalidad son lo mismo",
+    "Nadie merece sufrir",
+    "Castigar es siempre una forma de venganza",
+    "Somos los mismos a los 7 que a los 70 años",
+    "Sin memoria no hay identidad",
+    "El yo no existe, es una construcción",
+    "Somos lo que hacemos, no lo que pensamos",
+    "La felicidad es el único fin verdadero",
+    "El placer y la felicidad son lo mismo",
+    "Podemos ser felices sabiendo que moriremos",
+    "El sufrimiento es necesario para la sabiduría",
+    "La vida no tiene sentido intrínseco",
+    "Morir bien es más importante que vivir bien",
+    "La existencia precede a la esencia",
+    "El tiempo es una ilusión de la mente",
+    "El poder corrompe inevitablemente",
+    "El bien común justifica sacrificar al individuo",
+    "La democracia es el menos malo de los sistemas",
+    "El amor verdadero es desinteresado",
+    "El arte puede decir verdades que la filosofía no puede",
+    "Dios existe porque la nada es imposible",
+    "La ciencia no puede responder las preguntas más importantes",
+  ],
+  en: [
+    "The end justifies the means",
+    "No one does evil knowingly",
+    "Morality is just a social convention",
+    "We have obligations to people we will never meet",
+    "True impartiality is possible",
+    "Humans are innately good",
+    "Without punishment there is no true morality",
+    "Free will is an illusion",
+    "We are freer when we have fewer choices",
+    "Absolute freedom is impossible in society",
+    "We can choose who we are",
+    "I know that I know nothing",
+    "The senses always deceive us",
+    "There are truths reason cannot reach",
+    "True knowledge is impossible",
+    "Doubt is the beginning of wisdom",
+    "An unjust law is no law at all",
+    "Justice and legality are the same thing",
+    "No one deserves to suffer",
+    "Punishment is always a form of revenge",
+    "We are the same person at 7 as at 70",
+    "Without memory there is no identity",
+    "The self does not exist — it is a construction",
+    "We are what we do, not what we think",
+    "Happiness is the only true goal",
+    "Pleasure and happiness are the same thing",
+    "We can be happy knowing we will die",
+    "Suffering is necessary for wisdom",
+    "Life has no intrinsic meaning",
+    "Dying well matters more than living well",
+    "Existence precedes essence",
+    "Time is an illusion of the mind",
+    "Power inevitably corrupts",
+    "The common good justifies sacrificing the individual",
+    "Democracy is the least bad system",
+    "True love is selfless",
+    "Art can express truths that philosophy cannot",
+    "God exists because nothingness is impossible",
+    "Science cannot answer the most important questions",
+  ]
+};
 
 window.suggestRandomTopic = function() {
-  const tema = TEMAS_FILOSOFICOS[Math.floor(Math.random() * TEMAS_FILOSOFICOS.length)];
+  const list = TEMAS[lang] || TEMAS.es;
+  const tema = list[Math.floor(Math.random() * list.length)];
   const input = document.getElementById('message-input');
-  // Animate: fade out old, set new, fade in
   input.style.transition = 'opacity 0.2s';
   input.style.opacity = '0';
   setTimeout(() => {
@@ -2538,6 +2920,7 @@ function addMessage(role, text, strategy) {
   }
   container.appendChild(div);
   container.scrollTop = container.scrollHeight;
+  return div;
 }
 
 // Re-render all Socrates messages in the active language (called on lang toggle)
@@ -2586,16 +2969,27 @@ window.resetConversation = function() {
     tema:null, tesis_inicial:null, tesis_opuesta_objetivo:null, pasos:[], paso_actual:0,
     contradiccion_objetivo:null, definicion_en_construccion:null, fase:'detectar_tema'
   };
+
+  // FIX 3: Immediately clear all panel DOM values (not just state)
+  const clearEl = (id, val='—') => { const el = document.getElementById(id); if(el) el.innerHTML = val; };
+  const hideEl = (id) => { const el = document.getElementById(id); if(el) el.style.display='none'; };
+  clearEl('ubm-fase'); clearEl('ubm-epistemic'); clearEl('ubm-depth');
+  clearEl('ubm-strategy'); clearEl('ubm-progress', '0 ' + (lang==='es'?'turnos':'turns'));
+  hideEl('ubm-quality-container'); hideEl('ubm-tesis-container');
+  hideEl('ubm-falacias-container'); hideEl('ubm-contradiction-container');
+  hideEl('ubm-patron-container'); hideEl('plan-section');
+
+  lastTurnTokens = { analysis: null, strategy: null, socrates: null };
+  tokensHistory = [];
   renderUBM(null, null);
   renderPlan();
+  renderTokens();
   const container = document.getElementById('messages');
   container.innerHTML = `<div class="welcome-msg" id="welcome-msg">
     <div class="quote">${t('welcome.quote')}</div>
     <div class="quote-author">— SÓCRATES</div>
   </div>`;
   document.getElementById('examples-row').style.display = 'flex';
-  document.getElementById('provider-badge').textContent = '— sin actividad —';
-  document.getElementById('provider-badge').className = 'provider-badge';
   clearConversation().catch(() => {});
   toast(t('toast.reset'));
 };
@@ -2605,6 +2999,7 @@ window.openSettings = function() {
   document.getElementById('settings-panel').classList.add('open');
   document.getElementById('panel-overlay').classList.add('open');
   renderApiKeys();
+  renderTokens();
   const emailEl = document.getElementById('account-email');
   if (emailEl && currentUser) emailEl.textContent = currentUser.email;
 };
@@ -2630,18 +3025,24 @@ window.toast = function(msg, type = '') {
 };
 
 // ─── AUTH STATE ─────────────────────────────
+let authInitialized = false;
 onAuthStateChanged(auth, async (user) => {
   if (user) {
+    if (authInitialized) {
+      currentUser = user; // keep ref fresh on token refresh, no re-init
+      return;
+    }
+    authInitialized = true;
     currentUser = user;
     await loadUserData(user);
     applyTranslations();
 
-    if (displayMessages.length > 0) {
-      // Restore last conversation visually
-      const container = document.getElementById('messages');
-      container.innerHTML = '';
-      document.getElementById('examples-row').style.display = 'none';
+    // FIX 4: always clear container first to prevent double welcome
+    const container = document.getElementById('messages');
+    container.innerHTML = '';
 
+    if (displayMessages.length > 0) {
+      document.getElementById('examples-row').style.display = 'none';
       displayMessages.forEach(m => {
         if (m.role === 'socrates') {
           const text = lang === 'es' ? (m.textES || m.text || '') : (m.textEN || m.text || '');
@@ -2650,23 +3051,27 @@ onAuthStateChanged(auth, async (user) => {
           addMessage(m.role, m.text, null);
         }
       });
-
-      // Restore UBM and plan panels
       renderUBM(ubm.ultimoTipo, null);
       renderPlan();
-
-      // Show a subtle "conversation restored" hint
+      renderTokens();
       const hint = document.createElement('div');
       hint.style.cssText = 'text-align:center;color:var(--text-muted);font-size:11px;font-family:"JetBrains Mono",monospace;padding:8px;letter-spacing:1px;opacity:0.6';
-      hint.textContent = '— conversación restaurada —';
+      hint.textContent = lang === 'es' ? '— conversación restaurada —' : '— conversation restored —';
       container.appendChild(hint);
       container.scrollTop = container.scrollHeight;
     } else {
-      addMessage('socrates', t('welcome.socrates'));
+      // Show welcome screen elements fresh
+      container.innerHTML = `<div class="welcome-msg" id="welcome-msg">
+        <div class="quote">${'<!-- quote -->'}</div>
+        <div class="quote-author">— SÓCRATES</div>
+      </div>`;
+      document.getElementById('messages').querySelector('.quote').innerHTML = t('welcome.quote');
+      document.getElementById('examples-row').style.display = 'flex';
     }
 
     showScreen('chat-screen');
   } else {
+    authInitialized = false; // reset so next login re-inits
     currentUser = null;
     apiKeys = [];
     showScreen('auth-screen');
