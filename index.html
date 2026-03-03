@@ -249,9 +249,6 @@ body {
 }
 
 .lang-toggle {
-  position: fixed;
-  top: 20px;
-  right: 20px;
   background: rgba(201, 168, 76, 0.1);
   border: 1px solid rgba(201, 168, 76, 0.3);
   color: var(--gold);
@@ -262,7 +259,6 @@ body {
   cursor: pointer;
   transition: var(--transition);
   border-radius: var(--radius);
-  z-index: 100;
 }
 .lang-toggle:hover { background: rgba(201, 168, 76, 0.2); }
 
@@ -630,6 +626,7 @@ body {
   font-family: 'Cormorant Garamond', serif;
   font-size: 17px;
   resize: none;
+  overflow: hidden;
   outline: none;
   min-height: 52px;
   max-height: 140px;
@@ -1013,8 +1010,7 @@ body {
 <!-- Background Canvas -->
 <canvas id="bg-canvas"></canvas>
 
-<!-- Language Toggle -->
-<button class="lang-toggle" onclick="toggleLang()" id="lang-btn">EN</button>
+
 
 <!-- Toast Container -->
 <div class="toast-container" id="toast-container"></div>
@@ -1055,6 +1051,9 @@ body {
         <button class="btn-primary" onclick="login()" id="login-btn">
           <span data-i18n="auth.enter">Entrar a la Academia</span>
         </button>
+        <div style="text-align:center;margin-top:12px">
+          <button onclick="forgotPassword()" style="background:none;border:none;color:var(--text-muted);font-family:'Cormorant Garamond',serif;font-size:14px;cursor:pointer;font-style:italic;text-decoration:underline" data-i18n="auth.forgot">¿Olvidaste tu contraseña?</button>
+        </div>
         <div class="auth-error" id="login-error"></div>
       </div>
 
@@ -1075,6 +1074,7 @@ body {
         <button class="btn-primary" onclick="register()" id="register-btn">
           <span data-i18n="auth.create">Crear cuenta</span>
         </button>
+        <div style="margin-top:12px;font-size:12px;color:var(--text-muted);font-style:italic;text-align:center" data-i18n="auth.verify.note">Se enviará un código de verificación a tu email.</div>
         <div class="auth-error" id="register-error"></div>
       </div>
     </div>
@@ -1092,6 +1092,7 @@ body {
     </div>
     <div class="provider-badge" id="provider-badge">— sin actividad —</div>
     <div class="header-actions">
+      <button class="lang-toggle" onclick="toggleLang()" id="lang-btn">EN</button>
       <button class="btn-icon" onclick="toggleSidebar()" title="Panel de creencias">📊</button>
       <button class="btn-icon" onclick="openSettings()" title="Ajustes">⚙️</button>
     </div>
@@ -1227,7 +1228,7 @@ body {
 ═══════════════════════════════════════════ -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged }
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendEmailVerification, sendPasswordResetEmail }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc, updateDoc }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
@@ -1292,7 +1293,8 @@ const translations = {
     'auth.email': 'Correo electrónico',
     'auth.password': 'Contraseña',
     'auth.confirm': 'Confirmar contraseña',
-    'auth.enter': 'Entrar a la Academia',
+    'auth.forgot': '¿Olvidaste tu contraseña?',
+    'auth.verify.note': 'Se enviará un código de verificación a tu email.',
     'auth.create': 'Crear cuenta',
     'sidebar.beliefs': 'Modelo de Creencias',
     'sidebar.level': 'Nivel filosófico',
@@ -1344,7 +1346,8 @@ const translations = {
     'auth.email': 'Email address',
     'auth.password': 'Password',
     'auth.confirm': 'Confirm password',
-    'auth.enter': 'Enter the Academy',
+    'auth.forgot': 'Forgot your password?',
+    'auth.verify.note': 'A verification email will be sent to your inbox.',
     'auth.create': 'Create account',
     'sidebar.beliefs': 'Belief Model',
     'sidebar.level': 'Philosophical level',
@@ -1455,7 +1458,13 @@ window.register = async function() {
   if (pass.length < 8) { errEl.textContent = lang === 'es' ? 'Mínimo 8 caracteres' : 'Minimum 8 characters'; return; }
   btn.disabled = true;
   try {
-    await createUserWithEmailAndPassword(auth, email, pass);
+    const cred = await createUserWithEmailAndPassword(auth, email, pass);
+    await sendEmailVerification(cred.user);
+    document.getElementById('register-error').style.color = '#90C090';
+    document.getElementById('register-error').textContent = lang === 'es'
+      ? '✓ Cuenta creada. Revisa tu email para verificar tu cuenta.'
+      : '✓ Account created. Check your email to verify your account.';
+    btn.disabled = false;
   } catch(e) {
     if (e.code === 'auth/email-already-in-use') {
       errEl.textContent = lang === 'es' ? 'Este email ya está registrado' : 'Email already in use';
@@ -1468,6 +1477,26 @@ window.register = async function() {
 
 window.logout = async function() {
   await signOut(auth);
+};
+
+window.forgotPassword = async function() {
+  const email = document.getElementById('login-email').value.trim();
+  const errEl = document.getElementById('login-error');
+  if (!email) {
+    errEl.style.color = '#E07070';
+    errEl.textContent = lang === 'es' ? 'Escribe tu email primero' : 'Enter your email first';
+    return;
+  }
+  try {
+    await sendPasswordResetEmail(auth, email);
+    errEl.style.color = '#90C090';
+    errEl.textContent = lang === 'es'
+      ? '✓ Email de recuperación enviado. Revisa tu bandeja.'
+      : '✓ Recovery email sent. Check your inbox.';
+  } catch(e) {
+    errEl.style.color = '#E07070';
+    errEl.textContent = lang === 'es' ? 'Email no encontrado' : 'Email not found';
+  }
 };
 
 // ─── FIREBASE USER DATA ─────────────────────
