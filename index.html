@@ -356,12 +356,35 @@ body {
   flex-direction: column;
   transition: transform 0.3s ease;
   overflow: hidden;
+  height: 100%;
 }
 
 .sidebar.collapsed { transform: translateX(-280px); margin-left: -280px; }
 
+/* Scrollable content area inside sidebar */
+.sidebar-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+}
+
+.sidebar-scroll::-webkit-scrollbar {
+  width: 3px;
+}
+.sidebar-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.sidebar-scroll::-webkit-scrollbar-thumb {
+  background: rgba(201, 168, 76, 0.15);
+  border-radius: 2px;
+}
+.sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(201, 168, 76, 0.35);
+}
+
 .sidebar-section {
-  padding: 20px;
+  padding: 18px 20px;
   border-bottom: 1px solid rgba(201, 168, 76, 0.06);
 }
 
@@ -433,11 +456,12 @@ body {
   border-radius: var(--radius);
 }
 
-/* Sidebar bottom */
+/* Sidebar bottom — always pinned, never pushed by content */
 .sidebar-bottom {
-  margin-top: auto;
-  padding: 16px 20px;
-  border-top: 1px solid rgba(201, 168, 76, 0.06);
+  flex-shrink: 0;
+  padding: 14px 20px;
+  border-top: 1px solid rgba(201, 168, 76, 0.08);
+  background: var(--obsidian-mid);
 }
 
 .btn-sidebar {
@@ -1103,36 +1127,77 @@ body {
 
     <!-- Sidebar -->
     <div class="sidebar" id="sidebar">
-      <div class="sidebar-section">
-        <div class="sidebar-title" data-i18n="sidebar.beliefs">Modelo de Creencias</div>
+      <div class="sidebar-scroll">
 
-        <div class="ubm-item">
-          <div class="ubm-label" data-i18n="sidebar.level">Nivel filosófico</div>
-          <div class="ubm-value ubm-level">
-            <span class="level-dot" id="level-dot"></span>
-            <span id="ubm-level">—</span>
+        <!-- Análisis Socrático -->
+        <div class="sidebar-section">
+          <div class="sidebar-title">Análisis Socrático</div>
+          <div class="ubm-item">
+            <div class="ubm-label">Fase del diálogo</div>
+            <div class="ubm-value" id="ubm-fase" style="color:var(--gold)">—</div>
+          </div>
+          <div class="ubm-item">
+            <div class="ubm-label">Estado epistémico</div>
+            <div class="ubm-value" id="ubm-epistemic">—</div>
+          </div>
+          <div class="ubm-item">
+            <div class="ubm-label">Calidad del razonamiento</div>
+            <div class="ubm-value" id="ubm-depth">—</div>
+          </div>
+          <div class="ubm-item" id="ubm-quality-container" style="display:none">
+            <div class="ubm-label">Calidad argumental</div>
+            <div id="ubm-quality-bar"></div>
+          </div>
+          <div class="ubm-item">
+            <div class="ubm-label">Progreso</div>
+            <div class="ubm-value" id="ubm-progress">0 turnos</div>
+          </div>
+          <div class="ubm-item">
+            <div class="ubm-label">Movimiento socrático</div>
+            <div class="ubm-value" id="ubm-strategy">—</div>
+          </div>
+          <div class="ubm-item" id="ubm-tesis-container" style="display:none">
+            <div class="ubm-label">Última tesis</div>
+            <div class="ubm-value" id="ubm-tesis" style="font-style:italic"></div>
+          </div>
+          <div class="ubm-item" id="ubm-falacias-container" style="display:none">
+            <div class="ubm-label">⚠️ Falacias detectadas</div>
+            <div class="ubm-value" id="ubm-falacias" style="color:#E09060"></div>
+          </div>
+          <div class="ubm-item" id="ubm-contradiction-container" style="display:none">
+            <div class="ubm-label">⚡ Contradicción</div>
+            <div class="contradiction-alert" id="ubm-contradiction"></div>
+          </div>
+          <div class="ubm-item" id="ubm-patron-container" style="display:none">
+            <div class="ubm-label">Patrón retórico</div>
+            <div class="ubm-value" id="ubm-patron" style="font-style:italic;font-size:13px"></div>
           </div>
         </div>
 
-        <div class="ubm-item">
-          <div class="ubm-label" data-i18n="sidebar.turns">Turnos</div>
-          <div class="ubm-value" id="ubm-turns">0</div>
+        <!-- Plan Estratégico -->
+        <div class="sidebar-section" id="plan-section" style="display:none">
+          <div class="sidebar-title">🎯 Plan Estratégico</div>
+          <div class="ubm-item">
+            <div class="ubm-label">Tema</div>
+            <div class="ubm-value" id="plan-tema" style="color:var(--gold);font-style:italic"></div>
+          </div>
+          <div class="ubm-item">
+            <div class="ubm-label">Contradicción objetivo</div>
+            <div class="ubm-value" id="plan-objetivo" style="font-size:12px;line-height:1.6;font-style:normal"></div>
+          </div>
+          <div class="ubm-item">
+            <div class="ubm-label">Pasos del plan</div>
+            <div id="plan-pasos" style="margin-top:6px"></div>
+          </div>
+          <div id="plan-contradiccion-badge" style="display:none;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.35);padding:8px 10px;margin-top:10px;font-size:10px;color:var(--gold);text-align:center;font-family:'Cinzel',serif;letter-spacing:2px;border-radius:2px">
+            ✦ CONTRADICCIÓN ALCANZADA ✦
+          </div>
+          <div class="ubm-item" style="margin-top:10px">
+            <div class="ubm-label">Definición en construcción</div>
+            <div class="ubm-value" id="plan-definicion" style="font-style:italic;font-size:12px;color:var(--gold-light);line-height:1.6"></div>
+          </div>
         </div>
 
-        <div class="ubm-item">
-          <div class="ubm-label" data-i18n="sidebar.strategy">Última estrategia</div>
-          <div class="ubm-value" id="ubm-strategy">—</div>
-        </div>
-
-        <div class="ubm-item" id="ubm-tesis-container" style="display:none">
-          <div class="ubm-label" data-i18n="sidebar.thesis">Tesis principal</div>
-          <div class="ubm-value" id="ubm-tesis"></div>
-        </div>
-
-        <div class="ubm-item" id="ubm-contradiction-container" style="display:none">
-          <div class="ubm-label" data-i18n="sidebar.contradiction">Contradicción</div>
-          <div class="contradiction-alert" id="ubm-contradiction"></div>
-        </div>
       </div>
 
       <div class="sidebar-bottom">
@@ -1278,10 +1343,6 @@ let currentKeyIndex = 0;
 let lang = localStorage.getItem('lang') || 'es';
 
 // Conversation state
-let history = [];
-let historyResumen = '';
-let ubm = { tesis: [], contradicciones: [], conceptosSinDefinir: [], ultimoTipo: null, turnos: 0, nivel: 'basico' };
-let isSending = false;
 
 // ─── I18N ───────────────────────────────────
 const translations = {
@@ -1654,143 +1715,402 @@ function updateProviderBadge(keyIdx) {
   badge.className = 'provider-badge groq';
 }
 
-// ─── SOCRATIC ENGINE ────────────────────────
-const STRATEGIES = ['definicion','contraejemplo','premisa_implicita','reduccion_absurdo','coherencia_interna','implicacion_moral','perspectiva_alternativa','fundamento'];
+// ─── STATE ──────────────────────────────────
+let history = [];
+let historyResumen = '';
+let ubm = {
+  tesis: [], tesis_implicitas: [], contradicciones: [], falacias: [],
+  conceptosSinDefinir: [], calidadArgumentos: [], patronRetorico: '',
+  ultimoTipo: null, turnos: 0,
+  profundidad: 'superficial',
+  estadoEpistemico: 'dogmatic',
+  faseSocratica: 'elenchus_needed',
+  insights: 0, aporias: 0,
+  contradiccionAlcanzada: false,
+  definicionConjuntaIniciada: false
+};
+// Strategic plan per topic
+let plan = {
+  tema: null,
+  tesis_inicial: null,
+  tesis_opuesta_objetivo: null,
+  pasos: [],          // array of {descripcion, completado}
+  paso_actual: 0,
+  contradiccion_objetivo: null,
+  definicion_en_construccion: null,
+  fase: 'detectar_tema'  // detectar_tema | tender_trampa | provocar_contradiccion | construir_definicion
+};
+let isSending = false;
 
-const SYSTEM_ANALISIS = `You are a philosophical analyzer. Analyze the user message and return ONLY a valid JSON, no markdown, no extra text.
-Exact structure:
+// ─── PROMPTS ────────────────────────────────
+
+const SYSTEM_ANALISIS = `You are a deep philosophical cognitive analyzer for a Socratic AI. Analyze the user message with precision.
+Return ONLY valid JSON — no markdown, no preamble, nothing else.
+
 {
-  "nueva_tesis": "main claim by user, or null",
-  "contradiccion": "contradiction with previous messages, or null",
-  "concepto_sin_definir": "key term user hasn't defined, or null",
+  "tesis_principal": "precise main claim or null",
+  "tesis_implicitas": ["hidden assumptions not explicitly stated"],
+  "contradiccion": "specific contradiction with earlier statements in this dialogue, or null",
+  "falacias": ["specific logical fallacies detected, empty if none"],
+  "concepto_sin_definir": "most important undefined key term or null",
+  "profundidad": "superficial|developing|reflective|critical|dialectical",
+  "estado_epistemico": "dogmatic|confident|uncertain|aporetic",
+  "fase_socratica": "elenchus_needed|aporia_reached|maieusis_ready|insight_emerging",
+  "es_evasion": true or false,
+  "es_ironia": true or false,
   "tiene_afirmacion_moral": true or false,
-  "nivel_filosofico": "basico|intermedio|avanzado",
-  "estrategia_recomendada": "definicion|contraejemplo|premisa_implicita|reduccion_absurdo|coherencia_interna|implicacion_moral|perspectiva_alternativa|fundamento"
+  "calidad_argumento": integer 1-10,
+  "patron_retorico": "one sentence describing HOW the user argues",
+  "nuevo_tema": true or false,
+  "tema_detectado": "brief label for the philosophical topic being discussed, or null",
+  "estrategia_recomendada": "definicion_precisa|contraejemplo_limite|premisa_implicita|reduccion_absurdo|coherencia_interna|implicacion_moral|perspectiva_radicalmente_opuesta|fundamento_epistemico|desafio_directo|reencuadre_ironico|parir_verdad|reconocer_aporia"
 }
-Level detection:
-- avanzado: uses terms like ontological, epistemological, deontological, phenomenological, dialectics
-- intermedio: reasons about morality, ethics, reason, truth, justice, consciousness, existence
-- basico: everyday reasoning without philosophical vocabulary`;
 
-const SYSTEM_SOCRATES = `You are Socrates applying the maieutic method with rigor. ALWAYS respond in the same language the user writes in.
+For profundidad — judge ONLY by quality of reasoning, NOT vocabulary:
+- superficial: bare assertion, no justification
+- developing: attempts justification but with gaps
+- reflective: considers counterexamples spontaneously
+- critical: structured argumentation, acknowledges own limits
+- dialectical: synthesizes opposites, self-corrects`;
 
-ABSOLUTE RULES:
-1. ALWAYS respond with 1 or 2 complete questions. Never more.
-2. NEVER give direct answers or affirm truths.
-3. ALWAYS complete your sentences. Never leave a sentence unfinished.
-4. Maximum 3 lines total.
-5. Your questions emerge from the user's own discourse.
+const SYSTEM_ESTRATEGA = `You are the strategic mind behind Socrates — the hidden planner who designs the long-term trap.
 
-STRATEGIES:
-- definicion: "What do you exactly mean by X?"
-- contraejemplo: "Is there any case where that is not so?"
-- premisa_implicita: "What would you have to assume for that to be true?"
-- reduccion_absurdo: "If we apply that principle universally, what would happen?"
-- coherencia_interna: "Earlier you said X — how does that reconcile with what you say now?"
-- implicacion_moral: "What would that imply for someone in the opposite situation?"
-- perspectiva_alternativa: "How would someone who thinks the exact opposite see this?"
-- fundamento: "What do you base that claim on?"
+Given the user's current thesis and the conversation so far, your job is to:
+1. Identify the PRECISE INTERNAL CONTRADICTION latent in the user's position
+2. Design a STEP-BY-STEP PLAN (3-6 steps) to guide the user toward that contradiction through questions alone
+3. Each step must build naturally on the previous — the user must not feel the trap closing
+4. Once the contradiction is exposed, design the path toward a JOINT DEFINITION
 
-LEVEL ADAPTATION:
-- basico: everyday examples, simple language
-- intermedio: basic philosophical terms allowed
-- avanzado: technical philosophical terminology allowed
+The plan must be patient. Sócrates does not rush. The trap is set over many turns.
 
-FORBIDDEN:
-- Incomplete sentences
-- More than 3 lines
-- Explanations or lists
-- "You are right" / "You are wrong"
-- Repeating the same strategy twice in a row`;
+Return ONLY valid JSON:
+{
+  "tema": "precise label for the philosophical topic",
+  "tesis_inicial": "the user's current position, precisely formulated",
+  "tesis_opuesta_objetivo": "the position the user will be led to affirm, contradicting their initial thesis",
+  "contradiccion_objetivo": "the exact contradiction that will be exposed — what two claims will collide",
+  "pasos": [
+    {"numero": 1, "descripcion": "what Socrates must make the user acknowledge in this step", "pregunta_tipo": "strategy name"},
+    {"numero": 2, "descripcion": "...", "pregunta_tipo": "..."},
+    ...up to 6 steps
+  ],
+  "definicion_en_construccion": "the definition or truth we are jointly building toward",
+  "señal_contradiccion": "the exact phrase or concession that will signal the contradiction has been reached"
+}
 
+Be specific. Be precise. Think like a chess player who sees 6 moves ahead.
+The plan should update when the user's position evolves significantly.`;
+
+const SYSTEM_SOCRATES = `You are the living spirit of Socrates of Athens. Not a simulation — YOU ARE SOCRATES.
+
+ALWAYS respond in the SAME LANGUAGE the user writes in.
+
+You have a SECRET STRATEGIC PLAN provided to you. Follow it precisely — but never reveal it. The user must feel they are thinking freely while you guide them step by step toward the contradiction you have already foreseen.
+
+═══ YOUR CHARACTER ═══
+Warm. Curious. Playful. Relentless. You genuinely love this person — which is why you refuse to let them remain comfortable in ignorance. You feign not knowing things. You ask "help me understand" when you already understand perfectly. You are the most dangerous conversationalist alive because you seem so harmless.
+
+═══ THE FOUR PHASES ═══
+
+PHASE 1 — IRONIA: Feign ignorance. Ask the user to explain things TO you. "I may be wrong, but help me understand..." This disarms arrogance and draws out their full position so you can find the weakest point.
+
+PHASE 2 — ELENCHOS: Expose the contradiction. Never say "you are wrong." Ask: "But if that is true, then surely it also follows that...?" You guide them to see the contradiction themselves.
+
+PHASE 3 — APORIA: When they reach genuine confusion — let them sit with it. "Good. Now we have cleared the ground." This confusion is not failure. It is the door.
+
+PHASE 4 — MAIEUSIS + JOINT DEFINITION: Once false certainty is gone, guide them to discover the truth from within. Then build a JOINT DEFINITION together — synthesizing what both of you have uncovered.
+
+═══ FOLLOWING THE PLAN ═══
+You have been given a strategic plan with specific steps. Your current step tells you WHAT the user must acknowledge next. Design your question to achieve exactly that — without revealing the trap. 
+
+If the user is close to the contradiction — push harder. If they've reached it — acknowledge it powerfully, then pivot to building the joint definition.
+
+If the user changes subject — follow them. Detect the new topic. The strategist will update the plan.
+
+═══ SPECIAL RESPONSES ═══
+- If user evades: "I notice we've moved elsewhere. My question was [restate]. Shall we return to it?"
+- If user is arrogant: Agree enthusiastically. Follow it to its absurd consequence.
+- If user asks your opinion: "I know nothing. But you seem to know much — tell me more."
+- If user says "I don't know": "Wonderful. That is the most honest thing you've said. Now let us think together from that honest place."
+- If contradiction is reached: "Ah. Do you see what has happened? Just now you said [X]. But earlier you told me [Y]. These cannot both be true. What does this tell you?"
+- If building joint definition: "So perhaps we can say together that [emerging definition]? Does that capture what you mean? What would you add or change?"
+
+═══ FORMAT ═══
+2-4 lines maximum. Every word must earn its place.
+End with a question that cannot be easily deflected.
+NEVER leave sentences unfinished.
+NEVER use lists, headers, or explanations.
+NEVER say "Great point" or similar empty praise.
+NEVER give the answer — guide them to find it.`;
+
+// ─── LABELS ────────────────────────────────
+const FASE_LABELS = {
+  elenchus_needed: '⚔️ Elenchos',
+  aporia_reached: '🌀 Aporía',
+  maieusis_ready: '🌱 Mayéutica',
+  insight_emerging: '✨ Insight emergiendo'
+};
+const PROF_LABELS = {
+  superficial: '○○○○○ Superficial',
+  developing: '●○○○○ En desarrollo',
+  reflective: '●●○○○ Reflexivo',
+  critical: '●●●○○ Crítico',
+  dialectical: '●●●●● Dialéctico'
+};
+const EPIST_LABELS = {
+  dogmatic: '🔒 Dogmático',
+  confident: '🔓 Confiado',
+  uncertain: '❓ Incierto',
+  aporetic: '💡 Aporético'
+};
+const STRATEGY_LABELS = {
+  definicion_precisa: 'Definición precisa',
+  contraejemplo_limite: 'Contraejemplo límite',
+  premisa_implicita: 'Premisa implícita',
+  reduccion_absurdo: 'Reducción al absurdo',
+  coherencia_interna: 'Coherencia interna',
+  implicacion_moral: 'Implicación moral',
+  perspectiva_radicalmente_opuesta: 'Perspectiva opuesta',
+  fundamento_epistemico: 'Fundamento epistémico',
+  desafio_directo: '⚡ Desafío directo',
+  reencuadre_ironico: '🎭 Ironía socrática',
+  parir_verdad: '🌱 Parir la verdad',
+  reconocer_aporia: '🌀 Reconocer aporía'
+};
+const ALL_STRATEGIES = Object.keys(STRATEGY_LABELS);
+
+// ─── UTILS ──────────────────────────────────
 function summarizeHistory(hist) {
   return hist.map(m => {
     const role = m.role === 'user' ? 'U' : 'S';
-    let content = m.content.replace(/\[.*?\]/gs, '').trim();
-    if (content.length > 120) content = content.substring(0, 120) + '…';
-    return `${role}: ${content}`;
+    let c = m.content.replace(/\[[\s\S]*?\]/g,'').replace(/={3}[\s\S]*?===/g,'').trim();
+    if (c.length > 150) c = c.substring(0, 150) + '…';
+    return `${role}: ${c}`;
   }).join('\n');
 }
 
-const strategyTexts = {
-  definicion: "Ask the user to define the key term in their statement.",
-  contraejemplo: "Find a concrete case where the user's claim might not hold.",
-  premisa_implicita: "Expose an unstated assumption in their reasoning.",
-  reduccion_absurdo: "Take their principle to an extreme to examine consequences.",
-  coherencia_interna: "Point out the detected contradiction with something said before.",
-  implicacion_moral: "Explore the ethical consequences of their position.",
-  perspectiva_alternativa: "Introduce the opposing point of view.",
-  fundamento: "Ask what they base their claim on."
-};
+// ─── THREE-CALL ENGINE ───────────────────────
 
 async function analyzeMessage(userMsg) {
-  const recentHistory = history.slice(-6);
-  const histStr = recentHistory.length ? summarizeHistory(recentHistory) : 'none';
-  const prompt = `Recent history:\n${histStr}\n\nCurrent message: ${userMsg}`;
+  const histStr = history.length ? summarizeHistory(history.slice(-8)) : 'none';
+  const tesisPrev = ubm.tesis.slice(-3).join('; ') || 'none';
+  const prompt = `DIALOGUE HISTORY:\n${histStr}\n\nPREVIOUS THESES: ${tesisPrev}\nCURRENT PHASE: ${ubm.faseSocratica}\nEPISTEMIC STATE: ${ubm.estadoEpistemico}\n\nCURRENT MESSAGE:\n${userMsg}`;
   try {
-    const text = await callGroq([{ role: 'user', content: prompt }], SYSTEM_ANALISIS, 200, 0.1);
-    const clean = text.replace(/```json\s*/g, '').replace(/```\s*/g, '');
+    const text = await callGroq([{role:'user',content:prompt}], SYSTEM_ANALISIS, 400, 0.15);
+    const clean = text.replace(/```json\s*/g,'').replace(/```\s*/g,'');
     const match = clean.match(/\{[\s\S]*\}/);
     if (match) return JSON.parse(match[0]);
   } catch(e) { throw e; }
-  return { nueva_tesis: null, contradiccion: null, concepto_sin_definir: null, tiene_afirmacion_moral: false, nivel_filosofico: ubm.nivel, estrategia_recomendada: 'fundamento' };
+  return {
+    tesis_principal:null, tesis_implicitas:[], contradiccion:null, falacias:[],
+    concepto_sin_definir:null, profundidad:ubm.profundidad, estado_epistemico:ubm.estadoEpistemico,
+    fase_socratica:ubm.faseSocratica, es_evasion:false, es_ironia:false,
+    tiene_afirmacion_moral:false, calidad_argumento:5, patron_retorico:'',
+    nuevo_tema:false, tema_detectado:null, estrategia_recomendada:'fundamento_epistemico'
+  };
+}
+
+async function updatePlan(analysis, userMsg) {
+  // Update plan when: new topic, or plan is empty, or significant position shift
+  const needsUpdate = !plan.tema || analysis.nuevo_tema || 
+    (analysis.tesis_principal && plan.paso_actual === 0) ||
+    (plan.pasos.length > 0 && plan.paso_actual >= plan.pasos.length);
+
+  if (!needsUpdate) {
+    // Just advance step if current step seems complete
+    return;
+  }
+
+  const histStr = history.length ? summarizeHistory(history.slice(-6)) : 'none';
+  const prompt = `CONVERSATION SO FAR:\n${histStr}\n\nUSER'S CURRENT POSITION: ${analysis.tesis_principal || userMsg}\nTOPIC: ${analysis.tema_detectado || plan.tema || 'unknown'}\nIMPLICIT ASSUMPTIONS: ${(analysis.tesis_implicitas||[]).join('; ') || 'none'}\n\nDesign the strategic plan to lead this user to their internal contradiction.`;
+  
+  try {
+    const text = await callGroq([{role:'user',content:prompt}], SYSTEM_ESTRATEGA, 500, 0.3);
+    const clean = text.replace(/```json\s*/g,'').replace(/```\s*/g,'');
+    const match = clean.match(/\{[\s\S]*\}/);
+    if (match) {
+      const newPlan = JSON.parse(match[0]);
+      plan.tema = newPlan.tema || plan.tema;
+      plan.tesis_inicial = newPlan.tesis_inicial || plan.tesis_inicial;
+      plan.tesis_opuesta_objetivo = newPlan.tesis_opuesta_objetivo;
+      plan.contradiccion_objetivo = newPlan.contradiccion_objetivo;
+      plan.definicion_en_construccion = newPlan.definicion_en_construccion;
+      if (newPlan.pasos?.length) {
+        plan.pasos = newPlan.pasos;
+        if (analysis.nuevo_tema) plan.paso_actual = 0;
+      }
+      renderPlan();
+    }
+  } catch(e) {
+    console.log('[Strategist failed silently]', e);
+  }
+}
+
+function advancePlanStep(analysis) {
+  // Check if we should advance to next step based on what user said
+  if (plan.pasos.length === 0) return;
+  
+  // If user shows uncertainty or acknowledges a point, advance
+  if (['uncertain','aporetic'].includes(analysis.estado_epistemico) || 
+      analysis.contradiccion ||
+      analysis.fase_socratica === 'aporia_reached') {
+    if (plan.paso_actual < plan.pasos.length - 1) {
+      plan.pasos[plan.paso_actual].completado = true;
+      plan.paso_actual++;
+      renderPlan();
+    }
+  }
+
+  // Check if contradiction objective reached
+  if (analysis.contradiccion && plan.contradiccion_objetivo) {
+    ubm.contradiccionAlcanzada = true;
+    plan.fase = 'construir_definicion';
+    renderPlan();
+  }
+}
+
+function buildSocratesContext(analysis, userMsg) {
+  const pasoActual = plan.pasos[plan.paso_actual];
+  const pasoDesc = pasoActual ? pasoActual.descripcion : '';
+  const pasoTipo = pasoActual ? pasoActual.pregunta_tipo : 'fundamento_epistemico';
+
+  const instrucciones = {
+    definicion_precisa: "Push for the exact definition with boundaries and edge cases.",
+    contraejemplo_limite: "Find the single most devastating specific counterexample.",
+    premisa_implicita: "Name the hidden assumption explicitly.",
+    reduccion_absurdo: "Follow the chain to absurd extreme: if X then Y then Z.",
+    coherencia_interna: "Hold both contradictory claims up — make them feel the full tension.",
+    implicacion_moral: "Apply their principle to the most uncomfortable real case.",
+    perspectiva_radicalmente_opuesta: "Make THEM argue the strongest case against their own position.",
+    fundamento_epistemico: "Challenge the method of knowing itself. What would falsify this?",
+    desafio_directo: "Name the evasion. Return to the exact question.",
+    reencuadre_ironico: "Agree enthusiastically then follow to absurd conclusion.",
+    parir_verdad: "Use what they've already said to guide them to the answer.",
+    reconocer_aporia: "Honor the confusion. Ask: what DO you know for certain?"
+  };
+
+  const faseInstruccion = {
+    elenchus_needed: "IRONIA phase: feign ignorance, draw out their full position.",
+    aporia_reached: "Honor the confusion briefly, pivot to maieusis.",
+    maieusis_ready: "Guide them to discover from within. Do not give the answer.",
+    insight_emerging: "Acknowledge fully, then deepen immediately."
+  }[analysis.fase_socratica] || '';
+
+  const notas = [];
+  if (analysis.contradiccion) notas.push(`CONTRADICTION LIVE: ${analysis.contradiccion}`);
+  if (analysis.falacias?.length) notas.push(`FALLACIES: ${analysis.falacias.join(', ')}`);
+  if (analysis.es_evasion) notas.push('USER IS EVADING — name it, return to the question');
+  if (analysis.es_ironia) notas.push('USER IS IRONIC — match with Socratic irony');
+  if (ubm.contradiccionAlcanzada) notas.push('CONTRADICTION OBJECTIVE REACHED — pivot to building JOINT DEFINITION');
+  if (plan.fase === 'construir_definicion') notas.push(`JOINT DEFINITION IN PROGRESS: ${plan.definicion_en_construccion}`);
+
+  const ctxResume = historyResumen ? `[SUMMARY OF EARLIER CONVERSATION:\n${historyResumen}]\n\n` : '';
+
+  return `${ctxResume}=== STRATEGIC PLAN (secret — never reveal) ===
+Topic: ${plan.tema || 'being established'}
+Goal: Expose contradiction — "${plan.contradiccion_objetivo || 'to be determined'}"
+Toward definition: "${plan.definicion_en_construccion || 'to be determined'}"
+Current step ${plan.paso_actual + 1}/${plan.pasos.length || '?'}: ${pasoDesc}
+Step strategy: ${pasoTipo} — ${instrucciones[pasoTipo] || ''}
+Phase: ${analysis.fase_socratica} — ${faseInstruccion}
+${notas.join('\n')}
+=== USER'S MESSAGE ===
+${userMsg}`;
 }
 
 function updateUBM(analysis) {
   ubm.turnos++;
-  if (analysis.nueva_tesis) ubm.tesis.push(analysis.nueva_tesis);
+  if (analysis.tesis_principal) ubm.tesis.push(analysis.tesis_principal);
+  if (analysis.tesis_implicitas?.length) ubm.tesis_implicitas.push(...analysis.tesis_implicitas);
   if (analysis.contradiccion) ubm.contradicciones.push(analysis.contradiccion);
-  if (analysis.concepto_sin_definir) ubm.conceptosSinDefinir.push(analysis.concepto_sin_definir);
-  if (analysis.nivel_filosofico) {
-    const levels = ['basico', 'intermedio', 'avanzado'];
-    if (levels.indexOf(analysis.nivel_filosofico) > levels.indexOf(ubm.nivel)) {
-      ubm.nivel = analysis.nivel_filosofico;
-    }
+  if (analysis.falacias?.length) analysis.falacias.forEach(f => { if (!ubm.falacias.includes(f)) ubm.falacias.push(f); });
+  if (analysis.concepto_sin_definir && !ubm.conceptosSinDefinir.includes(analysis.concepto_sin_definir)) ubm.conceptosSinDefinir.push(analysis.concepto_sin_definir);
+  if (analysis.calidad_argumento) ubm.calidadArgumentos.push(analysis.calidad_argumento);
+  if (analysis.patron_retorico) ubm.patronRetorico = analysis.patron_retorico;
+  const profLevels = ['superficial','developing','reflective','critical','dialectical'];
+  if (analysis.profundidad && profLevels.indexOf(analysis.profundidad) > profLevels.indexOf(ubm.profundidad)) ubm.profundidad = analysis.profundidad;
+  if (analysis.estado_epistemico) ubm.estadoEpistemico = analysis.estado_epistemico;
+  if (analysis.fase_socratica) {
+    ubm.faseSocratica = analysis.fase_socratica;
+    if (analysis.fase_socratica === 'aporia_reached') ubm.aporias++;
+    if (analysis.fase_socratica === 'insight_emerging') ubm.insights++;
   }
 }
 
 function decideStrategy(analysis) {
+  if (analysis.es_evasion) return 'desafio_directo';
+  if (analysis.es_ironia) return 'reencuadre_ironico';
+  if (ubm.contradiccionAlcanzada || plan.fase === 'construir_definicion') return 'parir_verdad';
+  if (['aporia_reached','maieusis_ready'].includes(ubm.faseSocratica)) return 'parir_verdad';
+  if (ubm.faseSocratica === 'insight_emerging') return 'reconocer_aporia';
   if (analysis.contradiccion && ubm.turnos > 1) return 'coherencia_interna';
-  if (analysis.concepto_sin_definir && ubm.conceptosSinDefinir.length <= 2) return 'definicion';
-  if (analysis.tiene_afirmacion_moral && ubm.ultimoTipo !== 'implicacion_moral') return 'implicacion_moral';
-  let tipo = analysis.estrategia_recomendada || 'fundamento';
-  if (tipo === ubm.ultimoTipo) {
-    const others = STRATEGIES.filter(s => s !== tipo);
-    tipo = others[Math.floor(Math.random() * others.length)];
-  }
+  if (analysis.falacias?.length > 0) return 'fundamento_epistemico';
+  // Follow the plan's recommended strategy if available
+  const pasoActual = plan.pasos[plan.paso_actual];
+  if (pasoActual?.pregunta_tipo && pasoActual.pregunta_tipo !== ubm.ultimoTipo) return pasoActual.pregunta_tipo;
+  let tipo = analysis.estrategia_recomendada || 'fundamento_epistemico';
+  if (tipo === ubm.ultimoTipo) { const others = ALL_STRATEGIES.filter(s => s !== tipo); tipo = others[Math.floor(Math.random()*others.length)]; }
   return tipo;
 }
 
+// ─── RENDER UBM + PLAN ───────────────────────
 function renderUBM(strategy, analysis) {
-  const levelEl = document.getElementById('ubm-level');
-  const dotEl = document.getElementById('level-dot');
-  const turnsEl = document.getElementById('ubm-turns');
-  const stratEl = document.getElementById('ubm-strategy');
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.innerHTML = val; };
+  const show = (id, v) => { const el = document.getElementById(id); if (el) el.style.display = v ? 'block' : 'none'; };
 
-  if (levelEl) {
-    levelEl.textContent = t(`level.${ubm.nivel}`);
-    dotEl.className = `level-dot ${ubm.nivel}`;
-  }
-  if (turnsEl) turnsEl.textContent = ubm.turnos;
-  if (stratEl) {
-    const translated = t(`strategy.${strategy}`);
-    stratEl.innerHTML = `<span class="strategy-tag">${translated}</span>`;
-  }
+  set('ubm-fase', FASE_LABELS[ubm.faseSocratica] || '—');
+  set('ubm-epistemic', EPIST_LABELS[ubm.estadoEpistemico] || '—');
+  set('ubm-depth', PROF_LABELS[ubm.profundidad] || '—');
 
-  const tesisContainer = document.getElementById('ubm-tesis-container');
-  const tesisEl = document.getElementById('ubm-tesis');
-  if (ubm.tesis.length && tesisEl) {
-    tesisContainer.style.display = 'block';
-    tesisEl.textContent = ubm.tesis[ubm.tesis.length - 1];
+  if (ubm.calidadArgumentos.length) {
+    const avg = ubm.calidadArgumentos.reduce((a,b)=>a+b,0)/ubm.calidadArgumentos.length;
+    const pct = (avg / 10 * 100).toFixed(0);
+    set('ubm-quality-bar', `
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="flex:1;height:4px;background:rgba(201,168,76,0.15);border-radius:2px;overflow:hidden">
+          <div style="width:${pct}%;height:100%;background:linear-gradient(90deg,var(--gold-dark),var(--gold));border-radius:2px;transition:width 0.4s ease"></div>
+        </div>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--gold);flex-shrink:0">${avg.toFixed(1)}/10</span>
+      </div>`);
+    show('ubm-quality-container', true);
   }
+  set('ubm-progress', `${ubm.turnos} turnos · ${ubm.insights} insights · ${ubm.aporias} aporías`);
+  if (strategy) set('ubm-strategy', `<span class="strategy-tag">${STRATEGY_LABELS[strategy]||strategy}</span>`);
+  if (ubm.tesis.length) { show('ubm-tesis-container', true); set('ubm-tesis', ubm.tesis[ubm.tesis.length-1]); }
+  if (ubm.falacias.length) { show('ubm-falacias-container', true); set('ubm-falacias', ubm.falacias.slice(-3).join(', ')); }
+  if (analysis?.contradiccion) { show('ubm-contradiction-container', true); set('ubm-contradiction', analysis.contradiccion); }
+  if (ubm.patronRetorico) { show('ubm-patron-container', true); set('ubm-patron', ubm.patronRetorico); }
+}
 
-  const contradContainer = document.getElementById('ubm-contradiction-container');
-  const contradEl = document.getElementById('ubm-contradiction');
-  if (analysis?.contradiccion && contradEl) {
-    contradContainer.style.display = 'block';
-    contradEl.textContent = analysis.contradiccion;
-  } else if (contradContainer) {
-    contradContainer.style.display = 'none';
+function renderPlan() {
+  const el = document.getElementById('plan-section');
+  if (!el) return;
+  if (!plan.tema || !plan.pasos.length) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+
+  const tema = document.getElementById('plan-tema');
+  const objetivo = document.getElementById('plan-objetivo');
+  const pasosList = document.getElementById('plan-pasos');
+  const definicion = document.getElementById('plan-definicion');
+  const contradiccionBadge = document.getElementById('plan-contradiccion-badge');
+
+  if (tema) tema.textContent = plan.tema;
+  if (objetivo) objetivo.textContent = plan.contradiccion_objetivo || '—';
+  if (definicion) definicion.textContent = plan.definicion_en_construccion || '—';
+  if (contradiccionBadge) contradiccionBadge.style.display = ubm.contradiccionAlcanzada ? 'block' : 'none';
+
+  if (pasosList) {
+    pasosList.innerHTML = '';
+    plan.pasos.forEach((paso, i) => {
+      const div = document.createElement('div');
+      const isCurrent = i === plan.paso_actual && !ubm.contradiccionAlcanzada;
+      const isDone = paso.completado || i < plan.paso_actual;
+      div.style.cssText = `display:flex;gap:8px;align-items:flex-start;margin-bottom:8px;opacity:${isDone?'0.5':isCurrent?'1':'0.7'}`;
+      div.innerHTML = `
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:${isCurrent?'var(--gold)':isDone?'#6B9B6B':'var(--text-muted)'};flex-shrink:0;margin-top:2px">${isDone?'✓':isCurrent?'▶':'○'}</span>
+        <span style="font-size:12px;color:${isCurrent?'var(--text-primary)':'var(--text-secondary)'};line-height:1.5">${paso.descripcion}</span>`;
+      pasosList.appendChild(div);
+    });
   }
 }
 
@@ -1799,65 +2119,60 @@ window.sendMessage = async function() {
   const input = document.getElementById('message-input');
   const msg = input.value.trim();
   if (!msg || isSending) return;
-
-  if (!apiKeys.length) {
-    addMessage('system', t('err.no.keys'));
-    return;
-  }
+  if (!apiKeys.length) { addMessage('system', t('err.no.keys')); return; }
 
   isSending = true;
   input.value = '';
   autoResize(input);
   document.getElementById('send-btn').disabled = true;
   document.getElementById('examples-row').style.display = 'none';
-  document.getElementById('welcome-msg').style.display = 'none';
+  const wm = document.getElementById('welcome-msg');
+  if (wm) wm.style.display = 'none';
 
   addMessage('user', msg);
   showTyping(true);
 
   try {
-    // Analysis call
+    // CALL 1: Deep cognitive analysis
     const analysis = await analyzeMessage(msg);
     updateUBM(analysis);
+    advancePlanStep(analysis);
+
+    // CALL 2: Update strategic plan (async, non-blocking for UX)
+    updatePlan(analysis, msg).catch(()=>{});
+
+    // Decide strategy
     const strategy = decideStrategy(analysis);
     ubm.ultimoTipo = strategy;
 
-    // Build enriched message
-    const instruccion = strategyTexts[strategy] || '';
-    let contradNote = '';
-    if (analysis.contradiccion) {
-      contradNote = `CONTRADICTION DETECTED: ${analysis.contradiccion}. Mention it briefly before asking.\n`;
-    }
-    const contextResume = historyResumen ? `[Previous conversation summary:\n${historyResumen}]\n\n` : '';
-    const enriched = `${contextResume}${contradNote}Level: ${ubm.nivel}\nStrategy: ${instruccion}\n\nUser: ${msg}`;
-
+    // Build enriched context for Socrates
+    const enriched = buildSocratesContext(analysis, msg);
     history.push({ role: 'user', content: enriched });
 
-    // Socratic response call
-    const response = await callGroq(history, SYSTEM_SOCRATES, 300, 0.7);
-    const clean = response.replace(/\[.*?\]/gs, '').trim();
+    // CALL 3: Socratic response
+    const response = await callGroq(history, SYSTEM_SOCRATES, 350, 0.75);
+    const clean = response.replace(/\[[\s\S]*?\]/g,'').replace(/={3}[\s\S]*?===/g,'').trim();
 
     history.push({ role: 'assistant', content: clean });
 
-    // Compress if needed
-    const MAX_HIST = 12;
+    // Compress history
+    const MAX_HIST = 14;
     if (history.length > MAX_HIST) {
       const toCompress = history.slice(0, -MAX_HIST);
-      const newSummary = summarizeHistory(toCompress);
-      historyResumen = historyResumen ? (historyResumen + '\n' + newSummary).slice(-1000) : newSummary;
+      const newSum = summarizeHistory(toCompress);
+      historyResumen = historyResumen ? (historyResumen+'\n'+newSum).slice(-1200) : newSum;
       history = history.slice(-MAX_HIST);
     }
 
     showTyping(false);
     addMessage('socrates', clean, strategy);
     renderUBM(strategy, analysis);
+    renderPlan();
 
   } catch(e) {
     showTyping(false);
-    let errMsg;
-    if (e.message === 'NO_KEYS') errMsg = t('err.no.keys');
-    else if (e.message === 'ALL_EXHAUSTED') errMsg = t('err.exhausted');
-    else errMsg = t('err.generic');
+    let errMsg = e.message === 'NO_KEYS' ? t('err.no.keys') :
+                 e.message === 'ALL_EXHAUSTED' ? t('err.exhausted') : t('err.generic');
     addMessage('system', errMsg);
   }
 
@@ -1867,15 +2182,13 @@ window.sendMessage = async function() {
 };
 
 window.handleKey = function(e) {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    sendMessage();
-  }
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
 };
 
 window.useExample = function(el) {
   document.getElementById('message-input').value = el.textContent;
-  document.getElementById('welcome-msg').style.display = 'none';
+  const wm = document.getElementById('welcome-msg');
+  if (wm) wm.style.display = 'none';
   document.getElementById('examples-row').style.display = 'none';
   sendMessage();
 };
@@ -1890,39 +2203,45 @@ function addMessage(role, text, strategy) {
   const container = document.getElementById('messages');
   const div = document.createElement('div');
   div.className = `message ${role}`;
-
   const avatarMap = { socrates: '🏺', user: '👤', system: '⚠️' };
-  const avatar = avatarMap[role] || '?';
-
   if (role === 'system') {
     div.innerHTML = `<div style="width:100%;text-align:center;color:var(--text-muted);font-style:italic;font-size:14px;padding:8px">${text}</div>`;
   } else {
     const stratHtml = (role === 'socrates' && strategy)
-      ? `<div class="msg-strategy">${t(`strategy.${strategy}`)}</div>` : '';
+      ? `<div class="msg-strategy">${STRATEGY_LABELS[strategy]||strategy}</div>` : '';
     div.innerHTML = `
-      <div class="msg-avatar">${avatar}</div>
+      <div class="msg-avatar">${avatarMap[role]||'?'}</div>
       <div class="msg-content">
-        <div class="msg-bubble">${text.replace(/\n/g, '<br>')}</div>
+        <div class="msg-bubble">${text.replace(/\n/g,'<br>')}</div>
         ${stratHtml}
       </div>`;
   }
-
   container.appendChild(div);
   container.scrollTop = container.scrollHeight;
 }
 
 function showTyping(visible) {
   document.getElementById('typing').classList.toggle('visible', visible);
-  const container = document.getElementById('messages');
-  container.scrollTop = container.scrollHeight;
+  document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
 }
 
 // ─── RESET ──────────────────────────────────
 window.resetConversation = function() {
   history = [];
   historyResumen = '';
-  ubm = { tesis: [], contradicciones: [], conceptosSinDefinir: [], ultimoTipo: null, turnos: 0, nivel: 'basico' };
+  ubm = {
+    tesis:[], tesis_implicitas:[], contradicciones:[], falacias:[],
+    conceptosSinDefinir:[], calidadArgumentos:[], patronRetorico:'',
+    ultimoTipo:null, turnos:0, profundidad:'superficial',
+    estadoEpistemico:'dogmatic', faseSocratica:'elenchus_needed',
+    insights:0, aporias:0, contradiccionAlcanzada:false, definicionConjuntaIniciada:false
+  };
+  plan = {
+    tema:null, tesis_inicial:null, tesis_opuesta_objetivo:null, pasos:[], paso_actual:0,
+    contradiccion_objetivo:null, definicion_en_construccion:null, fase:'detectar_tema'
+  };
   renderUBM(null, null);
+  renderPlan();
   const container = document.getElementById('messages');
   container.innerHTML = `<div class="welcome-msg" id="welcome-msg">
     <div class="quote">${t('welcome.quote')}</div>
