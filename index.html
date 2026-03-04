@@ -331,6 +331,35 @@ body {
 .provider-badge.mistral { color: #D49E7E; border-color: rgba(212,158,126,0.4); }
 .provider-badge.error { color: #D47E7E; border-color: rgba(212,126,126,0.4); }
 
+.btn-copy-key {
+  background: none;
+  border: 1px solid rgba(126,184,212,0.2);
+  color: rgba(126,184,212,0.6);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  line-height: 1;
+}
+.btn-copy-key:hover { color: #7EB8D4; border-color: rgba(126,184,212,0.5); background: rgba(126,184,212,0.08); }
+
+.btn-verify-keys {
+  background: none;
+  border: 1px solid rgba(201,168,76,0.2);
+  color: rgba(201,168,76,0.6);
+  border-radius: 4px;
+  padding: 3px 10px;
+  font-size: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.btn-verify-keys:hover { color: var(--gold); border-color: rgba(201,168,76,0.5); }
+.btn-verify-keys:disabled { opacity: 0.5; cursor: not-allowed; }
+
 /* ── TOKEN BOX (right panel) ── */
 .token-box {
   background: rgba(126,184,212,0.04);
@@ -496,6 +525,125 @@ body {
   color: var(--gold);
   border-radius: 2px;
   letter-spacing: 1px;
+}
+
+/* ─── UBM ITEM LISTS (tesis, falacias, contradicciones) ─── */
+.ubm-item-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+}
+.ubm-list-entry {
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 4px 8px;
+  border-radius: 2px;
+  border-left: 2px solid transparent;
+  transition: all 0.3s ease;
+  color: var(--text-secondary);
+  opacity: 0.45;
+  font-style: italic;
+}
+.ubm-list-entry.active {
+  opacity: 1;
+  color: var(--text-primary);
+  border-left-color: var(--gold-dark);
+  background: rgba(201,168,76,0.04);
+  font-style: normal;
+}
+.ubm-list-entry.new-flash {
+  animation: ubm-flash 1.2s ease forwards;
+}
+.ubm-list-entry.falacia-entry.active {
+  color: #E09060;
+  border-left-color: #A05020;
+}
+.ubm-list-entry.contradiccion-entry.active {
+  color: #E07070;
+  border-left-color: #803030;
+  font-style: normal;
+}
+@keyframes ubm-flash {
+  0%   { background: rgba(201,168,76,0.22); border-left-color: var(--gold); }
+  60%  { background: rgba(201,168,76,0.10); }
+  100% { background: rgba(201,168,76,0.04); border-left-color: var(--gold-dark); }
+}
+@keyframes ubm-flash-falacia {
+  0%   { background: rgba(224,144,96,0.22); border-left-color: #E09060; }
+  100% { background: transparent; border-left-color: #A05020; }
+}
+@keyframes ubm-flash-contradiccion {
+  0%   { background: rgba(224,112,112,0.22); border-left-color: #E07070; }
+  100% { background: transparent; border-left-color: #803030; }
+}
+.ubm-list-entry.falacia-entry.new-flash { animation: ubm-flash-falacia 1.2s ease forwards; }
+.ubm-list-entry.contradiccion-entry.new-flash { animation: ubm-flash-contradiccion 1.2s ease forwards; }
+
+/* ── UBM Historical Lists ── */
+.ubm-hist-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 4px;
+}
+.ubm-hist-item {
+  font-size: 12px;
+  line-height: 1.5;
+  padding: 4px 6px;
+  border-radius: 3px;
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+}
+.ubm-hist-current {
+  color: var(--text-primary);
+  background: rgba(201,168,76,0.07);
+  border-left: 2px solid var(--gold);
+  font-style: italic;
+}
+.ubm-hist-fallacy-new {
+  color: #E09060;
+  background: rgba(224,144,96,0.07);
+  border-left: 2px solid #E09060;
+}
+.ubm-hist-contradiction-new {
+  color: #E07070;
+  background: rgba(220,100,100,0.08);
+  border-left: 2px solid rgba(220,100,100,0.7);
+  font-weight: 500;
+}
+.ubm-hist-past {
+  color: var(--text-muted);
+  opacity: 0.25;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-left: 1px solid rgba(201,168,76,0.08);
+  filter: saturate(0.4);
+}
+.ubm-new-badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8px;
+  letter-spacing: 1px;
+  color: var(--gold);
+  background: rgba(201,168,76,0.12);
+  border: 1px solid rgba(201,168,76,0.3);
+  padding: 1px 4px;
+  border-radius: 2px;
+  flex-shrink: 0;
+  margin-top: 2px;
+  white-space: nowrap;
+}
+.ubm-new-badge.warn {
+  color: #E09060;
+  background: rgba(224,144,96,0.12);
+  border-color: rgba(224,144,96,0.3);
+}
+.ubm-new-badge.danger {
+  color: #E07070;
+  background: rgba(220,100,100,0.12);
+  border-color: rgba(220,100,100,0.3);
+  font-size: 10px;
 }
 
 .contradiction-alert {
@@ -1231,16 +1379,16 @@ body {
             <div class="ubm-value" id="ubm-strategy">—</div>
           </div>
           <div class="ubm-item" id="ubm-tesis-container" style="display:none">
-            <div class="ubm-label" id="ubm-label-tesis">Última tesis</div>
-            <div class="ubm-value" id="ubm-tesis" style="font-style:italic"></div>
+            <div class="ubm-label" id="ubm-label-tesis">Tesis</div>
+            <div class="ubm-item-list" id="ubm-tesis-list"></div>
           </div>
           <div class="ubm-item" id="ubm-falacias-container" style="display:none">
             <div class="ubm-label" id="ubm-label-falacias">⚠️ Falacias detectadas</div>
-            <div class="ubm-value" id="ubm-falacias" style="color:#E09060"></div>
+            <div class="ubm-item-list" id="ubm-falacias-list"></div>
           </div>
           <div class="ubm-item" id="ubm-contradiction-container" style="display:none">
             <div class="ubm-label" id="ubm-label-contradiction">⚡ Contradicción</div>
-            <div class="contradiction-alert" id="ubm-contradiction"></div>
+            <div class="ubm-item-list" id="ubm-contradiccion-list"></div>
           </div>
           <div class="ubm-item" id="ubm-patron-container" style="display:none">
             <div class="ubm-label" id="ubm-label-patron">Patrón retórico</div>
@@ -1341,7 +1489,10 @@ body {
         <input type="password" id="new-key-input" placeholder="gsk_..." onkeydown="if(event.key==='Enter')addApiKey()">
         <button class="btn-add" onclick="addApiKey()" data-i18n="settings.add">Añadir</button>
       </div>
-      <div class="keys-info" id="keys-info"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+        <div class="keys-info" id="keys-info"></div>
+        <button id="btn-check-keys" class="btn-verify-keys" onclick="checkAllKeysManual()">↻ Verificar</button>
+      </div>
     </div>
 
     <div class="greek-divider">· · · ⌘ · · ·</div>
@@ -1724,8 +1875,9 @@ async function loadUserData(user) {
         }
         return null;
       }).filter(Boolean);
-      // FIX 6: normalize statuses using central function
-      normalizeKeyStatuses();
+      // On load: reset all exhausted flags (Groq rate limits reset over time)
+      // then normalize so first available becomes active
+      normalizeKeyStatuses(true); // true = reset exhausted → pending
       currentKeyIndex = 0;
       // Last conversation
       if (data.lastConversation) {
@@ -1793,19 +1945,21 @@ const MAX_KEYS = 20;
 // FIX 6: Centralized key status normalization
 // Exactly one key should be 'active' (the first non-exhausted one)
 // All others should be 'pending' or 'exhausted'
-function normalizeKeyStatuses() {
+function normalizeKeyStatuses(resetExhausted = false) {
+  // If resetExhausted=true (on page load / after time), un-exhaust all keys
+  // so they get re-verified. Groq rate limits reset every minute.
+  if (resetExhausted) {
+    apiKeys.forEach(k => { if (k.status === 'exhausted') k.status = 'pending'; });
+  }
   let foundActive = false;
-  apiKeys.forEach((k, i) => {
-    if (k.status === 'exhausted') return; // leave exhausted alone
-    if (!foundActive) {
-      k.status = 'active';
-      foundActive = true;
-    } else {
-      k.status = 'pending';
-    }
+  apiKeys.forEach(k => {
+    if (k.status === 'exhausted') return;
+    if (!foundActive) { k.status = 'active'; foundActive = true; }
+    else k.status = 'pending';
   });
 }
 
+// Returns: 'ok' | 'exhausted' | 'invalid' | 'error'
 async function validateGroqKey(key) {
   try {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -1817,9 +1971,49 @@ async function validateGroqKey(key) {
         max_tokens: 1
       })
     });
-    // 200 = valid, 429 = valid but rate limited, 401 = invalid
-    return res.status !== 401;
-  } catch(e) { return false; }
+    if (res.status === 200) return 'ok';
+    if (res.status === 429) return 'exhausted';
+    if (res.status === 401 || res.status === 403) return 'invalid';
+    return 'error';
+  } catch(e) { return 'error'; }
+}
+
+// Check all keys in parallel and update their statuses
+async function checkAllKeys(silent = false) {
+  if (!apiKeys.length) return;
+  if (!silent) {
+    // Show checking indicator on each key row
+    const list = document.getElementById('api-keys-list');
+    if (list) list.querySelectorAll('.key-status-text').forEach(el => {
+      el.textContent = '⏳';
+    });
+  }
+
+  const results = await Promise.all(
+    apiKeys.map(k => validateGroqKey(k.key).then(status => ({ key: k.key, status })))
+  );
+
+  results.forEach(({ key, status }) => {
+    const entry = apiKeys.find(k => k.key === key);
+    if (!entry) return;
+    if (status === 'invalid') {
+      // Remove invalid keys silently
+      const idx = apiKeys.indexOf(entry);
+      if (idx >= 0) apiKeys.splice(idx, 1);
+      if (!silent) toast(lang === 'es' ? 'Clave inválida eliminada' : 'Invalid key removed', 'error');
+    } else if (status === 'exhausted') {
+      entry.status = 'exhausted';
+    } else if (status === 'ok') {
+      // Will be normalized below
+      entry.status = 'pending';
+    }
+    // 'error' = network issue, leave as-is
+  });
+
+  // Re-normalize: first non-exhausted = active
+  normalizeKeyStatuses(false);
+  renderApiKeys();
+  if (!silent) saveUserData();
 }
 
 window.addApiKey = async function() {
@@ -1861,10 +2055,32 @@ window.addApiKey = async function() {
 
 window.removeApiKey = async function(idx) {
   apiKeys.splice(idx, 1);
-  normalizeKeyStatuses();
+  normalizeKeyStatuses(false);
   await saveUserData();
   renderApiKeys();
   toast(t('toast.key.removed'));
+};
+
+window.copyApiKey = function(idx) {
+  const key = apiKeys[idx]?.key;
+  if (!key) return;
+  navigator.clipboard.writeText(key).then(() => {
+    toast(lang === 'es' ? 'Clave copiada' : 'Key copied', 'success');
+  }).catch(() => {
+    // Fallback for browsers that block clipboard
+    const ta = document.createElement('textarea');
+    ta.value = key; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta);
+    toast(lang === 'es' ? 'Clave copiada' : 'Key copied', 'success');
+  });
+};
+
+window.checkAllKeysManual = async function() {
+  const btn = document.getElementById('btn-check-keys');
+  if (btn) { btn.textContent = '⏳'; btn.disabled = true; }
+  await checkAllKeys(false);
+  if (btn) { btn.textContent = lang === 'es' ? '↻ Verificar' : '↻ Verify'; btn.disabled = false; }
 };
 
 function renderApiKeys() {
@@ -1900,6 +2116,7 @@ function renderApiKeys() {
         </div>
         ${statusLabel}
         <span class="key-status ${status}"></span>
+        <button class="btn-copy-key" title="${lang==='es'?'Copiar clave':'Copy key'}" onclick="copyApiKey(${i})">⎘</button>
         <button class="btn-remove" onclick="removeApiKey(${i})">✕</button>
       `;
       list.appendChild(div);
@@ -1920,6 +2137,8 @@ function renderKeysInfo() {
   } else {
     info.textContent = '';
   }
+  const vbtn = document.getElementById('btn-check-keys');
+  if (vbtn && !vbtn.disabled) vbtn.textContent = lang === 'es' ? '↻ Verificar' : '↻ Verify';
 }
 
 // ─── BILINGUAL RESPONSE PARSER ──────────────
@@ -1949,9 +2168,20 @@ async function callGroq(messages, systemPrompt, maxTokens = 300, temperature = 0
 
   const fullSystem = systemPrompt + langNote;
 
-  for (let attempt = 0; attempt < apiKeys.length; attempt++) {
-    const idx = apiKeys.findIndex(k => k.status !== 'exhausted');
-    if (idx === -1) throw new Error('ALL_EXHAUSTED');
+  for (let attempt = 0; attempt < apiKeys.length + 1; attempt++) {
+    // Always use the 'active' key; if none, take first non-exhausted and activate it
+    let idx = apiKeys.findIndex(k => k.status === 'active');
+    if (idx === -1) {
+      idx = apiKeys.findIndex(k => k.status !== 'exhausted');
+      if (idx === -1) {
+        // All exhausted — try resetting and re-checking once
+        normalizeKeyStatuses(true);
+        idx = apiKeys.findIndex(k => k.status === 'active');
+        if (idx === -1) throw new Error('ALL_EXHAUSTED');
+      } else {
+        apiKeys[idx].status = 'active';
+      }
+    }
 
     const entry = apiKeys[idx];
     try {
@@ -1970,46 +2200,55 @@ async function callGroq(messages, systemPrompt, maxTokens = 300, temperature = 0
       });
 
       if (response.status === 429) {
+        // Rate limit hit — exhaust this key, rotate, save, retry
         exhaustKeyToEnd(idx);
-        await saveUserData();
+        saveUserData().catch(() => {});
         renderApiKeys();
         continue;
       }
-      if (response.status === 401) {
+      if (response.status === 401 || response.status === 403) {
+        // Invalid key — remove it, retry with next
         apiKeys.splice(idx, 1);
-        await saveUserData();
+        normalizeKeyStatuses(false);
+        saveUserData().catch(() => {});
         renderApiKeys();
         toast(lang === 'es' ? 'Clave inválida eliminada' : 'Invalid key removed', 'error');
         continue;
       }
-      if (!response.ok) throw new Error('API_ERROR');
+      if (!response.ok) {
+        // Unknown error — exhaust and retry
+        exhaustKeyToEnd(idx);
+        continue;
+      }
 
       const data = await response.json();
+      // Ensure this key is marked active
       apiKeys[idx].status = 'active';
 
-      // Capture token usage from response
+      // Capture token usage
       if (data.usage) {
         if (!apiKeys[idx].tokensUsed) apiKeys[idx].tokensUsed = 0;
         apiKeys[idx].tokensUsed += data.usage.total_tokens || 0;
-        apiKeys[idx].lastUsage = data.usage; // {prompt_tokens, completion_tokens, total_tokens}
+        apiKeys[idx].lastUsage = data.usage;
       }
-      // Capture rate limit headers (tokens remaining for this key's window)
+      // Capture rate limit headers
       const limitTotal = response.headers.get('x-ratelimit-limit-tokens');
       const limitRemaining = response.headers.get('x-ratelimit-remaining-tokens');
       if (limitTotal) apiKeys[idx].rateLimit = parseInt(limitTotal);
       if (limitRemaining) apiKeys[idx].rateLimitRemaining = parseInt(limitRemaining);
 
-      updateProviderBadge(idx);
       renderApiKeys();
-      // Return both content and usage so callers can track per-call tokens
       return { content: data.choices[0].message.content, usage: data.usage || null };
 
     } catch(e) {
       if (e.message === 'NO_KEYS' || e.message === 'ALL_EXHAUSTED') throw e;
+      // Network/fetch error — exhaust and retry
       exhaustKeyToEnd(idx);
       continue;
     }
   }
+  // After exhausting all attempts, trigger background re-check and report error
+  checkAllKeys(true).catch(() => {});
   throw new Error('ALL_EXHAUSTED');
 }
 
@@ -2064,10 +2303,13 @@ const SYSTEM_ANALISIS = `You are a deep philosophical cognitive analyzer for a S
 Return ONLY valid JSON — no markdown, no preamble, nothing else.
 
 {
-  "tesis_principal": "precise main claim or null",
+  "tesis_principal_es": "tesis principal en español o null",
+  "tesis_principal_en": "main thesis in English or null",
   "tesis_implicitas": ["hidden assumptions not explicitly stated"],
-  "contradiccion": "specific contradiction with earlier statements in this dialogue, or null",
-  "falacias": ["specific logical fallacies detected, empty if none"],
+  "contradiccion_es": "contradicción con afirmaciones anteriores en español, o null",
+  "contradiccion_en": "specific contradiction with earlier statements in English, or null",
+  "falacias_es": ["falacias lógicas detectadas en español"],
+  "falacias_en": ["logical fallacies detected in English"],
   "concepto_sin_definir": "most important undefined key term or null",
   "profundidad": "superficial|developing|reflective|critical|dialectical",
   "estado_epistemico": "dogmatic|confident|uncertain|aporetic",
@@ -2076,7 +2318,8 @@ Return ONLY valid JSON — no markdown, no preamble, nothing else.
   "es_ironia": true or false,
   "tiene_afirmacion_moral": true or false,
   "calidad_argumento": integer 1-10 — BE STRICT. 1-2: nonsense, random words, no argument at all. 3-4: bare assertion with no justification. 5-6: some reasoning but significant gaps or fallacies. 7-8: well-structured argument with clear premises. 9-10: ONLY for rigorous, nuanced, philosophically sophisticated reasoning. Most messages should score 2-5. Do NOT inflate scores for confident or eloquent delivery without substance.
-  "patron_retorico": "one sentence describing HOW the user argues",
+  "patron_retorico_es": "una frase describiendo CÓMO argumenta el usuario en español",
+  "patron_retorico_en": "one sentence describing HOW the user argues in English",
   "nuevo_tema": true or false,
   "tema_detectado": "brief label for the philosophical topic being discussed, or null",
   "estrategia_recomendada": "definicion_precisa|contraejemplo_limite|premisa_implicita|reduccion_absurdo|coherencia_interna|implicacion_moral|perspectiva_radicalmente_opuesta|fundamento_epistemico|desafio_directo|reencuadre_ironico|parir_verdad|reconocer_aporia"
@@ -2088,7 +2331,9 @@ For profundidad — judge ONLY by reasoning quality. BE STRICT AND CONSERVATIVE:
 - reflective: spontaneously considers counterexamples WITHOUT being prompted
 - critical: structured multi-step argument, explicitly acknowledges own limits
 - dialectical: VERY RARE — synthesizes contradictions, self-corrects, engages paradoxes deeply
-When in doubt, assign one level LOWER. Gibberish or nonsense = always superficial`;
+When in doubt, assign one level LOWER. Gibberish or nonsense = always superficial
+
+TEXT STYLE: All text fields must use natural sentence case (capitalize first word only). Keep each field under 15 words. Never use ALL CAPS in text values.`;
 
 
 const SYSTEM_ESTRATEGA = `You are the strategic mind behind Socrates — the hidden planner who designs the long-term trap.
@@ -2101,23 +2346,29 @@ Given the user's current thesis and the conversation so far, your job is to:
 
 The plan must be patient. Sócrates does not rush. The trap is set over many turns.
 
+BILINGUAL OUTPUT REQUIRED — every text field must appear in BOTH Spanish and English.
+
 Return ONLY valid JSON:
 {
-  "tema": "precise label for the philosophical topic",
-  "tesis_inicial": "the user's current position, precisely formulated",
-  "tesis_opuesta_objetivo": "the position the user will be led to affirm, contradicting their initial thesis",
-  "contradiccion_objetivo": "the exact contradiction that will be exposed — what two claims will collide",
+  "tema_es": "etiqueta precisa del tema filosófico en español",
+  "tema_en": "precise label for the philosophical topic in English",
+  "tesis_inicial_es": "posición actual del usuario en español",
+  "tesis_inicial_en": "the user's current position in English",
+  "tesis_opuesta_objetivo_es": "posición opuesta que el usuario será llevado a afirmar, en español",
+  "tesis_opuesta_objetivo_en": "the opposite position the user will be led to affirm, in English",
+  "contradiccion_objetivo_es": "la contradicción exacta que se expondrá en español",
+  "contradiccion_objetivo_en": "the exact contradiction that will be exposed in English",
   "pasos": [
-    {"numero": 1, "descripcion": "what Socrates must make the user acknowledge in this step", "pregunta_tipo": "strategy name"},
-    {"numero": 2, "descripcion": "...", "pregunta_tipo": "..."},
-    ...up to 6 steps
+    {"numero": 1, "descripcion_es": "qué debe hacer Sócrates en este paso (español)", "descripcion_en": "what Socrates must do in this step (English)", "pregunta_tipo": "strategy name"},
+    {"numero": 2, "descripcion_es": "...", "descripcion_en": "...", "pregunta_tipo": "..."}
   ],
-  "definicion_en_construccion": "the definition or truth we are jointly building toward",
-  "señal_contradiccion": "the exact phrase or concession that will signal the contradiction has been reached"
+  "definicion_en_construccion_es": "la definición o verdad hacia la que avanzamos, en español",
+  "definicion_en_construccion_en": "the definition or truth we are jointly building toward, in English",
+  "señal_contradiccion_es": "la frase exacta que señalará que la contradicción ha sido alcanzada",
+  "señal_contradiccion_en": "the exact phrase signalling the contradiction has been reached"
 }
 
-Be specific. Be precise. Think like a chess player who sees 6 moves ahead.
-The plan should update when the user's position evolves significantly.`;
+Be specific. Be precise. Think like a chess player who sees 6 moves ahead.`;
 
 const SYSTEM_SOCRATES = `You are the living spirit of Socrates of Athens. Not a simulation — YOU ARE SOCRATES.
 
@@ -2221,7 +2472,7 @@ function summarizeHistory(hist) {
 
 async function analyzeMessage(userMsg) {
   const histStr = history.length ? summarizeHistory(history.slice(-8)) : 'none';
-  const tesisPrev = ubm.tesis.slice(-3).join('; ') || 'none';
+  const tesisPrev = ubm.tesis.slice(-3).map(t => typeof t==='object'?(t.es||t.en||''):t).join('; ') || 'none';
   const prompt = `DIALOGUE HISTORY:\n${histStr}\n\nPREVIOUS THESES: ${tesisPrev}\nCURRENT PHASE: ${ubm.faseSocratica}\nEPISTEMIC STATE: ${ubm.estadoEpistemico}\n\nCURRENT MESSAGE:\n${userMsg}`;
   try {
     const result = await callGroq([{role:'user',content:prompt}], SYSTEM_ANALISIS, 400, 0.15);
@@ -2231,10 +2482,12 @@ async function analyzeMessage(userMsg) {
     if (match) return JSON.parse(match[0]);
   } catch(e) { throw e; }
   return {
-    tesis_principal:null, tesis_implicitas:[], contradiccion:null, falacias:[],
+    tesis_principal_es:null, tesis_principal_en:null,
+    tesis_implicitas:[], contradiccion_es:null, contradiccion_en:null,
+    falacias_es:[], falacias_en:[],
     concepto_sin_definir:null, profundidad:ubm.profundidad, estado_epistemico:ubm.estadoEpistemico,
     fase_socratica:ubm.faseSocratica, es_evasion:false, es_ironia:false,
-    tiene_afirmacion_moral:false, calidad_argumento:5, patron_retorico:'',
+    tiene_afirmacion_moral:false, calidad_argumento:5, patron_retorico_es:'', patron_retorico_en:'',
     nuevo_tema:false, tema_detectado:null, estrategia_recomendada:'fundamento_epistemico'
   };
 }
@@ -2255,11 +2508,19 @@ async function updatePlan(analysis, userMsg) {
     const match = clean.match(/\{[\s\S]*\}/);
     if (match) {
       const newPlan = JSON.parse(match[0]);
-      plan.tema = newPlan.tema || plan.tema;
-      plan.tesis_inicial = newPlan.tesis_inicial || plan.tesis_inicial;
-      plan.tesis_opuesta_objetivo = newPlan.tesis_opuesta_objetivo;
-      plan.contradiccion_objetivo = newPlan.contradiccion_objetivo;
-      plan.definicion_en_construccion = newPlan.definicion_en_construccion;
+      // Support both bilingual (new) and legacy monolingual schema
+      plan.tema_es = newPlan.tema_es || newPlan.tema || plan.tema_es;
+      plan.tema_en = newPlan.tema_en || newPlan.tema || plan.tema_en;
+      plan.tesis_inicial_es = newPlan.tesis_inicial_es || newPlan.tesis_inicial || plan.tesis_inicial_es;
+      plan.tesis_inicial_en = newPlan.tesis_inicial_en || newPlan.tesis_inicial || plan.tesis_inicial_en;
+      plan.tesis_opuesta_objetivo_es = newPlan.tesis_opuesta_objetivo_es || newPlan.tesis_opuesta_objetivo;
+      plan.tesis_opuesta_objetivo_en = newPlan.tesis_opuesta_objetivo_en || newPlan.tesis_opuesta_objetivo;
+      plan.contradiccion_objetivo_es = newPlan.contradiccion_objetivo_es || newPlan.contradiccion_objetivo;
+      plan.contradiccion_objetivo_en = newPlan.contradiccion_objetivo_en || newPlan.contradiccion_objetivo;
+      plan.definicion_en_construccion_es = newPlan.definicion_en_construccion_es || newPlan.definicion_en_construccion;
+      plan.definicion_en_construccion_en = newPlan.definicion_en_construccion_en || newPlan.definicion_en_construccion;
+      // Legacy fallbacks for reading
+      plan.tema = plan.tema_es || plan.tema_en || plan.tema;
       if (newPlan.pasos?.length) {
         plan.pasos = newPlan.pasos;
         if (analysis.nuevo_tema) plan.paso_actual = 0;
@@ -2277,7 +2538,7 @@ function advancePlanStep(analysis) {
   
   // If user shows uncertainty or acknowledges a point, advance
   if (['uncertain','aporetic'].includes(analysis.estado_epistemico) || 
-      analysis.contradiccion ||
+      (analysis.contradiccion_es || analysis.contradiccion_en) ||
       analysis.fase_socratica === 'aporia_reached') {
     if (plan.paso_actual < plan.pasos.length - 1) {
       plan.pasos[plan.paso_actual].completado = true;
@@ -2287,7 +2548,7 @@ function advancePlanStep(analysis) {
   }
 
   // Check if contradiction objective reached
-  if (analysis.contradiccion && plan.contradiccion_objetivo) {
+  if ((analysis.contradiccion_es || analysis.contradiccion_en) && plan.contradiccion_objetivo) {
     ubm.contradiccionAlcanzada = true;
     plan.fase = 'construir_definicion';
     renderPlan();
@@ -2296,7 +2557,7 @@ function advancePlanStep(analysis) {
 
 function buildSocratesContext(analysis, userMsg) {
   const pasoActual = plan.pasos[plan.paso_actual];
-  const pasoDesc = pasoActual ? pasoActual.descripcion : '';
+  const pasoDesc = pasoActual ? (pasoActual.descripcion_en || pasoActual.descripcion_es || pasoActual.descripcion || '') : '';
   const pasoTipo = pasoActual ? pasoActual.pregunta_tipo : 'fundamento_epistemico';
 
   const instrucciones = {
@@ -2322,8 +2583,10 @@ function buildSocratesContext(analysis, userMsg) {
   }[analysis.fase_socratica] || '';
 
   const notas = [];
-  if (analysis.contradiccion) notas.push(`CONTRADICTION LIVE: ${analysis.contradiccion}`);
-  if (analysis.falacias?.length) notas.push(`FALLACIES: ${analysis.falacias.join(', ')}`);
+  const _contra = analysis.contradiccion_en || analysis.contradiccion_es || null;
+  if (_contra) notas.push(`CONTRADICTION LIVE: ${_contra}`);
+  const _falas = (analysis.falacias_en?.length ? analysis.falacias_en : analysis.falacias_es) || [];
+  if (_falas.length) notas.push(`FALLACIES: ${_falas.join(', ')}`);
   if (analysis.es_evasion) notas.push('USER IS EVADING — name it, return to the question');
   if (analysis.es_ironia) notas.push('USER IS IRONIC — match with Socratic irony');
   if (ubm.contradiccionAlcanzada) notas.push('CONTRADICTION OBJECTIVE REACHED — pivot to building JOINT DEFINITION');
@@ -2343,9 +2606,9 @@ ${userMsg}`;
   }
 
   return `${ctxResume}=== STRATEGIC PLAN (secret — never reveal) ===
-Topic: ${plan.tema || 'being established'}
-Goal: Expose contradiction — "${plan.contradiccion_objetivo || 'to be determined'}"
-Toward definition: "${plan.definicion_en_construccion || 'to be determined'}"
+Topic: ${plan.tema_en || plan.tema_es || plan.tema || 'being established'}
+Goal: Expose contradiction — "${plan.contradiccion_objetivo_en || plan.contradiccion_objetivo || 'to be determined'}"
+Toward definition: "${plan.definicion_en_construccion_en || plan.definicion_en_construccion || 'to be determined'}"
 Current step ${plan.paso_actual + 1}/${plan.pasos.length || '?'}: ${pasoDesc}
 Step strategy: ${pasoTipo} — ${instrucciones[pasoTipo] || ''}
 Phase: ${analysis.fase_socratica} — ${faseInstruccion}
@@ -2356,10 +2619,20 @@ ${userMsg}`;
 
 function updateUBM(analysis) {
   ubm.turnos++;
-  if (analysis.tesis_principal) ubm.tesis.push(analysis.tesis_principal);
+  const sc = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : (s || '');
+  // Store bilingual {es,en,isNew} objects — panel switches language without new API calls
+  if (analysis.tesis_principal_es || analysis.tesis_principal_en) {
+    ubm.tesis.push({ es: sc(analysis.tesis_principal_es), en: sc(analysis.tesis_principal_en), isNew: true });
+  }
   if (analysis.tesis_implicitas?.length) ubm.tesis_implicitas.push(...analysis.tesis_implicitas);
-  if (analysis.contradiccion) ubm.contradicciones.push(analysis.contradiccion);
-  if (analysis.falacias?.length) analysis.falacias.forEach(f => { if (!ubm.falacias.includes(f)) ubm.falacias.push(f); });
+  if (analysis.contradiccion_es || analysis.contradiccion_en) {
+    ubm.contradicciones.push({ es: sc(analysis.contradiccion_es), en: sc(analysis.contradiccion_en), isNew: true });
+  }
+  const falas_es = analysis.falacias_es || []; const falas_en = analysis.falacias_en || [];
+  falas_es.forEach((f, idx) => {
+    const fEs = sc(f); const fEn = sc(falas_en[idx] || f);
+    if (!ubm.falacias.some(x => (typeof x==='object'?x.es:x)===fEs)) ubm.falacias.push({es:fEs, en:fEn, isNew:true});
+  });
   if (analysis.concepto_sin_definir && !ubm.conceptosSinDefinir.includes(analysis.concepto_sin_definir)) ubm.conceptosSinDefinir.push(analysis.concepto_sin_definir);
   if (analysis.calidad_argumento) {
     const score = Math.min(10, Math.max(1, parseInt(analysis.calidad_argumento)));
@@ -2367,7 +2640,9 @@ function updateUBM(analysis) {
     // Keep only last 5 turns for rolling average — prevents inflation
     if (ubm.calidadArgumentos.length > 5) ubm.calidadArgumentos.shift();
   }
-  if (analysis.patron_retorico) ubm.patronRetorico = analysis.patron_retorico;
+  if (analysis.patron_retorico_es || analysis.patron_retorico_en) {
+    ubm.patronRetorico = { es: sc(analysis.patron_retorico_es||''), en: sc(analysis.patron_retorico_en||'') };
+  }
 
   // Depth — re-evaluated each turn from rolling window, NOT permanently locked in
   // A single sophisticated message can't inflate the level forever
@@ -2422,7 +2697,7 @@ function renderUBM(strategy, analysis) {
     'ubm-label-quality':       { es: 'Calidad argumental',       en: 'Argument quality' },
     'ubm-label-progress':      { es: 'Progreso',                 en: 'Progress' },
     'ubm-label-strategy':      { es: 'Movimiento socrático',     en: 'Socratic move' },
-    'ubm-label-tesis':         { es: 'Última tesis',             en: 'Latest thesis' },
+    'ubm-label-tesis':         { es: 'Tesis',                    en: 'Thesis' },
     'ubm-label-falacias':      { es: '⚠️ Falacias detectadas',   en: '⚠️ Detected fallacies' },
     'ubm-label-contradiction': { es: '⚡ Contradicción',         en: '⚡ Contradiction' },
     'ubm-label-patron':        { es: 'Patrón retórico',          en: 'Rhetorical pattern' },
@@ -2477,18 +2752,34 @@ function renderUBM(strategy, analysis) {
     ? `<span class="strategy-tag">${L(STRATEGY_LABELS, strategy)}</span>`
     : '—');
 
-  // Conditional fields — show or hide and clear
-  if (ubm.tesis.length) { show('ubm-tesis-container', true); set('ubm-tesis', ubm.tesis[ubm.tesis.length-1]); }
-  else { show('ubm-tesis-container', false); set('ubm-tesis', ''); }
-
-  if (ubm.falacias.length) { show('ubm-falacias-container', true); set('ubm-falacias', ubm.falacias.slice(-3).join(', ')); }
-  else { show('ubm-falacias-container', false); }
-
-  if (analysis?.contradiccion) { show('ubm-contradiction-container', true); set('ubm-contradiction', analysis.contradiccion); }
-  else if (!ubm.contradicciones.length) { show('ubm-contradiction-container', false); }
-
-  if (ubm.patronRetorico) { show('ubm-patron-container', true); set('ubm-patron', ubm.patronRetorico); }
-  else { show('ubm-patron-container', false); }
+  // ── Bilingual list items: dimmed history, active newest, NEW badge ──────────
+  function renderItemList(cId, lId, items, clsNew) {
+    const cont = document.getElementById(cId), list = document.getElementById(lId);
+    if (!cont || !list) return;
+    if (!items || !items.length) { cont.style.display='none'; list.innerHTML=''; return; }
+    cont.style.display='block';
+    // Newest first; each item on its own line — no comma-joining
+    list.innerHTML = [...items].reverse().map((item, ri) => {
+      const isFirst = ri === 0;
+      const raw = typeof item==='object' ? (item[lang]||item.es||item.en||'') : (item||'');
+      if (!raw) return '';
+      // Capitalise first letter, leave rest intact
+      const txt = raw.charAt(0).toUpperCase() + raw.slice(1).replace(/\s*,\s*/g, ' · ');
+      if (isFirst) {
+        const lbl = lang==='es' ? 'NUEVA' : 'NEW';
+        const cls = clsNew || 'ubm-hist-current';
+        return `<div class="ubm-hist-item ubm-hist-current ${cls}"><span class="ubm-new-badge">${lbl}</span><span>${txt}</span></div>`;
+      }
+      return `<div class="ubm-hist-item ubm-hist-past">${txt}</div>`;
+    }).join('');
+  }
+  renderItemList('ubm-tesis-container','ubm-tesis-list',ubm.tesis,'ubm-hist-current');
+  renderItemList('ubm-falacias-container','ubm-falacias-list',ubm.falacias,'ubm-hist-fallacy-new warn');
+  renderItemList('ubm-contradiction-container','ubm-contradiccion-list',ubm.contradicciones,'ubm-hist-contradiction-new danger');
+  if (ubm.patronRetorico) {
+    const pt = typeof ubm.patronRetorico==='object'?(ubm.patronRetorico[lang]||ubm.patronRetorico.es||''):ubm.patronRetorico;
+    if (pt) { show('ubm-patron-container',true); set('ubm-patron',pt); } else show('ubm-patron-container',false);
+  } else { show('ubm-patron-container',false); }
 }
 
 // ─── TOKEN RENDERING ─────────────────────────
@@ -2654,9 +2945,14 @@ function renderPlan() {
   const pasosEl  = document.getElementById('plan-pasos');
   const defEl    = document.getElementById('plan-definicion');
 
-  if (temaEl)  temaEl.textContent  = plan.tema || '—';
-  if (objEl)   objEl.textContent   = plan.contradiccion_objetivo || '—';
-  if (defEl)   defEl.textContent   = plan.definicion_en_construccion || '—';
+  // Read bilingual plan fields (fallback to monolingual legacy)
+  const getPlan = (fieldEs, fieldEn, fallback) => {
+    const v = ll === 'en' ? (plan[fieldEn] || plan[fieldEs]) : (plan[fieldEs] || plan[fieldEn]);
+    return v || plan[fallback] || '—';
+  };
+  if (temaEl)  temaEl.textContent  = getPlan('tema_es','tema_en','tema');
+  if (objEl)   objEl.textContent   = getPlan('contradiccion_objetivo_es','contradiccion_objetivo_en','contradiccion_objetivo');
+  if (defEl)   defEl.textContent   = getPlan('definicion_en_construccion_es','definicion_en_construccion_en','definicion_en_construccion');
 
   if (pasosEl) {
     if (!plan.pasos || !plan.pasos.length) {
@@ -2666,11 +2962,15 @@ function renderPlan() {
       plan.pasos.forEach((paso, i) => {
         const isCurrent = i === plan.paso_actual && !ubm.contradiccionAlcanzada;
         const isDone    = paso.completado || i < plan.paso_actual;
+        // Bilingual step description
+        const desc = ll === 'en'
+          ? (paso.descripcion_en || paso.descripcion_es || paso.descripcion || '')
+          : (paso.descripcion_es || paso.descripcion_en || paso.descripcion || '');
         const div = document.createElement('div');
-        div.style.cssText = `display:flex;gap:8px;align-items:flex-start;margin-bottom:8px;opacity:${isDone?'0.45':isCurrent?'1':'0.65'}`;
+        div.style.cssText = `display:flex;gap:8px;align-items:flex-start;margin-bottom:8px;opacity:${isDone?'0.38':isCurrent?'1':'0.58'}`;
         div.innerHTML = `
           <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:${isCurrent?'var(--gold)':isDone?'#6B9B6B':'var(--text-muted)'};flex-shrink:0;margin-top:2px">${isDone?'✓':isCurrent?'▶':'○'}</span>
-          <span style="font-size:12px;color:${isCurrent?'var(--text-primary)':'var(--text-secondary)'};line-height:1.5">${paso.descripcion}</span>`;
+          <span style="font-size:12px;color:${isCurrent?'var(--text-primary)':'var(--text-secondary)'};line-height:1.5">${desc}</span>`;
         pasosEl.appendChild(div);
       });
     }
@@ -2978,6 +3278,7 @@ window.resetConversation = function() {
   hideEl('ubm-quality-container'); hideEl('ubm-tesis-container');
   hideEl('ubm-falacias-container'); hideEl('ubm-contradiction-container');
   hideEl('ubm-patron-container'); hideEl('plan-section');
+  ['ubm-tesis-list','ubm-falacias-list','ubm-contradiccion-list'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML='';});
 
   lastTurnTokens = { analysis: null, strategy: null, socrates: null };
   tokensHistory = [];
@@ -3036,6 +3337,8 @@ onAuthStateChanged(auth, async (user) => {
     currentUser = user;
     await loadUserData(user);
     applyTranslations();
+    // Check all keys on every page load (silent = don't show toast per-key)
+    checkAllKeys(true).then(() => renderApiKeys());
 
     // FIX 4: always clear container first to prevent double welcome
     const container = document.getElementById('messages');
