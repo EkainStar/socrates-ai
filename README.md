@@ -1,70 +1,40 @@
----
-title: Sócrates AI
-emoji: 🏛️
-colorFrom: yellow
-colorTo: orange
----
+# 🏛 Sócrates AI
 
-# 🏛️ Sócrates AI — La Academia
+A Socratic dialogue engine that challenges your beliefs through questions — not answers.
 
-Un chatbot filosófico basado en el método mayéutico de Sócrates. Disponible en **español e inglés**.
+## What it does
 
-## ✨ Características
+Sócrates AI engages you in philosophical dialogue using the classical Socratic method: it feigns ignorance, probes your reasoning, exposes internal contradictions, and guides you toward genuine insight. It never tells you that you are wrong.
 
-- 🔐 Autenticación por email/contraseña (Firebase)
-- 🗝️ Hasta **20 claves API de Groq** por usuario con rotación automática
-- 🧠 **User Belief Model (UBM)** — detecta nivel filosófico, contradicciones y tesis
-- 🌍 **Bilingüe** — ES / EN
-- ✨ Diseño inmersivo estilo Academia griega
+## Quick start
 
-## 🚀 Despliegue en GitHub Pages
+1. Create a free account at [console.groq.com](https://console.groq.com) and copy your API key (starts with `gsk_`).
+2. Open the app, sign in, go to **Settings ⚙️**, and add your key.
+3. Type a belief or philosophical position and press Enter.
 
-1. Sube los archivos a tu repositorio de GitHub
-2. Ve a **Settings → Pages**
-3. Source: `Deploy from a branch` → `main` → `/ (root)`
-4. Tu app estará en: `https://ekainstar.github.io/socrates-ai/`
+**Example topics to try:**
+- *"The end justifies the means"*
+- *"Free will is an illusion"*
+- *"Happiness is the only true goal"*
+- *"A just law cannot be an unjust one"*
 
-## 🔧 Configuración Firebase necesaria
+Or click **🎲 Suggest a topic** for a random philosophical starting point.
 
-En la consola de Firebase:
+## Interface
 
-### Authentication
-- Habilitar **Email/Password**
+| Element | Function |
+|---|---|
+| 📊 | Toggle the Analysis Panel (left sidebar) |
+| ⚙️ | Settings — API keys and token usage |
+| ℹ️ | Full user guide |
+| ES/EN | Switch language — everything updates instantly |
+| ↺ | Reset conversation |
 
-### Firestore Rules
-```
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-  }
-}
-```
+## Technical stack
 
-### Authorized Domains
-En Authentication → Settings → Authorized domains, añade tu dominio de GitHub Pages:
-`ekainstar.github.io`
+- **LLM:** Groq — `llama-3.3-70b-versatile`
+- **Auth & storage:** Firebase (Firestore + Authentication)
+- **Architecture:** Three-call engine per message (Analyzer → Strategist → Socrates)
+- **Frontend:** Vanilla HTML/CSS/JS — no build step
 
-## 🗝️ Cómo obtener claves Groq gratuitas
-
-1. Ve a [console.groq.com](https://console.groq.com)
-2. Crea una cuenta gratuita
-3. API Keys → Create API Key
-4. Pega la clave en la app (⚙️ → Claves API)
-
-Cada clave tiene **100,000 tokens/día** gratuitos. Con 20 claves tienes hasta **2,000,000 tokens/día**.
-
-## 🛡️ Seguridad
-
-- Las claves API se encriptan con XOR+base64 usando el UID del usuario antes de guardarse en Firestore
-- Las reglas de Firestore garantizan que cada usuario solo accede a sus propios datos
-- No hay backend: las llamadas a Groq se hacen directamente desde el navegador
-
-## 📚 Stack técnico
-
-- HTML/CSS/JS puro — sin frameworks
-- Firebase (Auth + Firestore)
-- Groq API (Llama 3.3 70B)
-- GitHub Pages (hosting gratuito)
+For a complete explanation of how the app works internally, open the **ℹ️ Info** screen inside the app.

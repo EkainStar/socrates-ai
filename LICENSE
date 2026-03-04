@@ -1,0 +1,170 @@
+================================================================================
+  SÓCRATES AI — PROPRIETARY SOFTWARE LICENSE
+  Copyright © 2026 EkainStar. All Rights Reserved.
+================================================================================
+
+ENGLISH VERSION
+───────────────────────────────────────────────────────────────────────────────
+
+Copyright © 2026 EkainStar. All Rights Reserved.
+
+This software, Sócrates AI, including all its source code, design, architecture,
+logic, prompts, user interface, documentation, and any associated files
+(collectively, the "Software"), is the exclusive intellectual property of
+EkainStar and is protected under applicable international copyright laws,
+including but not limited to the Berne Convention for the Protection of Literary
+and Artistic Works, the TRIPS Agreement, and national intellectual property
+legislation.
+
+1. GRANT OF LICENSE
+   No license, express or implied, is granted to any person or entity. Access
+   to this Software does not constitute permission to use, copy, reproduce,
+   modify, merge, publish, distribute, sublicense, sell, or otherwise exploit
+   the Software or any portion thereof.
+
+2. PROHIBITED ACTS
+   Without the prior explicit written consent of EkainStar, the following are
+   strictly prohibited:
+
+   a) Copying, reproducing, or duplicating the Software, in whole or in part,
+      by any means, including but not limited to electronic, mechanical, or
+      manual reproduction.
+
+   b) Modifying, adapting, translating, reverse-engineering, decompiling,
+      disassembling, or creating derivative works based on the Software.
+
+   c) Distributing, publishing, sublicensing, renting, leasing, lending, or
+      otherwise transferring the Software or any rights therein to any third
+      party.
+
+   d) Using the Software's source code, design patterns, prompt architecture,
+      user interface structure, or any other component as a basis or reference
+      for creating competing or similar products.
+
+   e) Removing, altering, or obscuring any copyright notice, trademark, or
+      proprietary legend contained in or on the Software.
+
+   f) Claiming authorship or ownership of the Software or any derivative work.
+
+3. INTELLECTUAL PROPERTY
+   The Software includes, without limitation, the following proprietary elements
+   owned exclusively by EkainStar:
+
+   - The three-call AI engine architecture (Analyzer / Strategist / Socrates)
+   - The User Belief Model (UBM) system and its data schema
+   - The 12 Socratic strategy classification system and its prompts
+   - The bilingual rendering architecture and live-translation system
+   - The strategic plan generation logic and dialogue phase system
+   - All user interface design, layouts, color schemes, and typography choices
+   - All system prompts, instruction sets, and model configuration
+
+4. VIEWING PERMITTED
+   Access to this repository (if publicly visible) is granted solely for the
+   purpose of review and evaluation. Such access does not imply any license to
+   use, copy, or build upon the Software.
+
+5. NO WARRANTY
+   THE SOFTWARE IS PROVIDED WITHOUT WARRANTY OF ANY KIND. EKAINSTAR MAKES NO
+   REPRESENTATIONS OR WARRANTIES, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
+   TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR
+   NON-INFRINGEMENT.
+
+6. LIMITATION OF LIABILITY
+   IN NO EVENT SHALL EKAINSTAR BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER
+   LIABILITY ARISING FROM OR IN CONNECTION WITH THE SOFTWARE OR ITS USE.
+
+7. ENFORCEMENT
+   Any unauthorized use, reproduction, or distribution of the Software may
+   result in severe civil and criminal penalties and will be prosecuted to the
+   maximum extent possible under applicable law.
+
+8. CONTACT
+   For licensing inquiries or permissions, contact EkainStar through the
+   official channels associated with this project.
+
+================================================================================
+
+VERSIÓN EN ESPAÑOL
+───────────────────────────────────────────────────────────────────────────────
+
+Copyright © 2026 EkainStar. Todos los derechos reservados.
+
+Este software, Sócrates AI, incluyendo todo su código fuente, diseño,
+arquitectura, lógica, prompts, interfaz de usuario, documentación y cualquier
+archivo asociado (en conjunto, el "Software"), es propiedad intelectual
+exclusiva de EkainStar y está protegido por las leyes internacionales de
+derechos de autor aplicables, incluyendo entre otras el Convenio de Berna para
+la Protección de las Obras Literarias y Artísticas, el Acuerdo ADPIC y la
+legislación nacional de propiedad intelectual.
+
+1. CONCESIÓN DE LICENCIA
+   No se concede ninguna licencia, expresa ni implícita, a ninguna persona o
+   entidad. El acceso a este Software no constituye permiso para usar, copiar,
+   reproducir, modificar, fusionar, publicar, distribuir, sublicenciar, vender
+   ni explotar de cualquier otra forma el Software o cualquier parte del mismo.
+
+2. ACTOS PROHIBIDOS
+   Sin el consentimiento previo, explícito y por escrito de EkainStar, están
+   estrictamente prohibidos los siguientes actos:
+
+   a) Copiar, reproducir o duplicar el Software, total o parcialmente, por
+      cualquier medio, incluyendo la reproducción electrónica, mecánica o manual.
+
+   b) Modificar, adaptar, traducir, realizar ingeniería inversa, descompilar,
+      desensamblar o crear obras derivadas basadas en el Software.
+
+   c) Distribuir, publicar, sublicenciar, arrendar, prestar o transferir de
+      cualquier otra forma el Software o cualquier derecho sobre el mismo a
+      terceros.
+
+   d) Utilizar el código fuente, patrones de diseño, arquitectura de prompts,
+      estructura de interfaz de usuario o cualquier otro componente del Software
+      como base o referencia para crear productos competidores o similares.
+
+   e) Eliminar, alterar u ocultar cualquier aviso de copyright, marca comercial
+      o leyenda de propiedad contenida en el Software o sobre él.
+
+   f) Reclamar la autoría o propiedad del Software o de cualquier obra derivada.
+
+3. PROPIEDAD INTELECTUAL
+   El Software incluye, sin limitación, los siguientes elementos propietarios
+   de exclusiva titularidad de EkainStar:
+
+   - La arquitectura del motor de IA de tres llamadas (Analizador / Estratega /
+     Sócrates)
+   - El sistema de Modelo de Creencias del Usuario (MCU) y su esquema de datos
+   - El sistema de clasificación de las 12 estrategias socráticas y sus prompts
+   - La arquitectura de renderizado bilingüe y el sistema de traducción en vivo
+   - La lógica de generación del plan estratégico y el sistema de fases del
+     diálogo
+   - Todo el diseño de interfaz de usuario, maquetaciones, paletas de color y
+     tipografía
+   - Todos los prompts de sistema, instrucciones y configuraciones del modelo
+
+4. VISUALIZACIÓN PERMITIDA
+   El acceso a este repositorio (si es públicamente visible) se concede
+   únicamente con fines de revisión y evaluación. Dicho acceso no implica
+   ninguna licencia para usar, copiar ni desarrollar a partir del Software.
+
+5. SIN GARANTÍAS
+   EL SOFTWARE SE PROPORCIONA SIN GARANTÍA DE NINGÚN TIPO. EKAINSTAR NO OFRECE
+   NINGUNA REPRESENTACIÓN NI GARANTÍA, EXPRESA NI IMPLÍCITA, INCLUYENDO PERO
+   NO LIMITÁNDOSE A GARANTÍAS DE COMERCIABILIDAD, ADECUACIÓN PARA UN FIN
+   PARTICULAR O NO INFRACCIÓN.
+
+6. LIMITACIÓN DE RESPONSABILIDAD
+   EN NINGÚN CASO EKAINSTAR SERÁ RESPONSABLE DE NINGUNA RECLAMACIÓN, DAÑOS U
+   OTRA RESPONSABILIDAD DERIVADA DE O EN RELACIÓN CON EL SOFTWARE O SU USO.
+
+7. APLICACIÓN
+   Cualquier uso, reproducción o distribución no autorizada del Software puede
+   dar lugar a graves sanciones civiles y penales, y será perseguida en la
+   máxima medida que permita la legislación aplicable.
+
+8. CONTACTO
+   Para consultas sobre licencias o permisos, contacta con EkainStar a través
+   de los canales oficiales asociados a este proyecto.
+
+================================================================================
+© 2026 EkainStar — Sócrates AI. All Rights Reserved / Todos los derechos reservados.
+================================================================================
