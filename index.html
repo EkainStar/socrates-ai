@@ -1093,9 +1093,9 @@ body {
   background: var(--text-muted);
   flex-shrink: 0;
 }
-.api-key-item .key-status.active { background: #6B9B6B; box-shadow: 0 0 6px rgba(107,155,107,0.5); }
-.api-key-item .key-status.exhausted { background: #C97B30; box-shadow: 0 0 6px rgba(201,123,48,0.4); }
-.api-key-item .key-status.pending { background: var(--text-muted); }
+.api-key-item .key-status.active  { background: #6B9B6B; box-shadow: 0 0 6px rgba(107,155,107,0.5); }
+.api-key-item .key-status.pending  { background: #C97B30; box-shadow: 0 0 6px rgba(201,123,48,0.4); }
+.api-key-item .key-status.exhausted { background: #D47E7E; box-shadow: 0 0 6px rgba(212,126,126,0.4); }
 .api-key-item.exhausted-row { opacity: 0.6; }
 
 .api-key-item .btn-remove {
@@ -1567,6 +1567,13 @@ body {
           <div style="display:flex;justify-content:space-between;margin-top:4px">
             <span class="token-mono">Key: <span class="token-blue" id="token-key-used">—</span></span>
             <span class="token-mono" id="token-rate-left">—</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding-top:8px;border-top:1px solid rgba(126,184,212,0.08)">
+            <span class="token-mono" id="token-remaining-label" style="opacity:0.6">Disponibles</span>
+            <span class="token-mono" id="token-remaining-val" style="color:#6B9B6B;font-weight:600">—</span>
+          </div>
+          <div class="token-bar-track" style="margin-top:4px">
+            <div id="token-remaining-fill" style="height:100%;background:linear-gradient(90deg,#4a7a4a,#6B9B6B);border-radius:2px;transition:width 0.4s ease;width:0%"></div>
           </div>
         </div>
 
@@ -2142,12 +2149,12 @@ function renderApiKeys() {
       const masked = entry.key.substring(0, 8) + '••••••••••••' + entry.key.slice(-4);
       const status = entry.status || 'pending';
       const div = document.createElement('div');
-      div.className = `api-key-item${status === 'exhausted' ? ' exhausted-row' : ''}`;
+      div.className = `api-key-item${status === 'exhausted' ? ' exhausted-row' : status === 'active' ? ' active-row' : ''}`;
       const statusLabel = status === 'active'
-        ? `<span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#6B9B6B;letter-spacing:1px">${lang==='es'?'EN USO':'ACTIVE'}</span>`
+        ? `<span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#6B9B6B;letter-spacing:1px">${lang==='es'?'ACTIVA':'ACTIVE'}</span>`
         : status === 'exhausted'
-        ? `<span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#C97B30;letter-spacing:1px">${lang==='es'?'AGOTADA':'EXHAUSTED'}</span>`
-        : '';
+        ? `<span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#D47E7E;letter-spacing:1px">${lang==='es'?'AGOTADA':'EXHAUSTED'}</span>`
+        : `<span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#C97B30;letter-spacing:1px">${lang==='es'?'DISPONIBLE':'AVAILABLE'}</span>`;
       let tokenLine = '';
       if (entry.rateLimitRemaining != null && entry.rateLimit != null) {
         const rem = entry.rateLimitRemaining.toLocaleString();
@@ -2931,7 +2938,8 @@ function renderTokens() {
   const fillEl = document.getElementById('token-total-fill');
   if (fillEl) fillEl.style.width = pct + '%';
 
-  // Active key info
+  // Active key info + remaining tokens
+  setTxt('token-remaining-label', ll === 'es' ? 'Disponibles' : 'Available');
   const activeKey = apiKeys.find(k => k.status === 'active');
   if (activeKey) {
     const masked = activeKey.key.substring(0, 8) + '···' + activeKey.key.slice(-4);
@@ -2940,14 +2948,23 @@ function renderTokens() {
       const rem = fmtTok(activeKey.rateLimitRemaining);
       const tot = fmtTok(activeKey.rateLimit);
       setTxt('token-rate-left', rem + '/' + tot + ' tkn ' + (ll==='es'?'libre':'free'));
-    } else if (activeKey.tokensUsed) {
-      setTxt('token-rate-left', fmtTok(activeKey.tokensUsed) + ' tkn ' + (ll==='es'?'usados':'used'));
+      // Remaining bar
+      const remPct = Math.min(100, Math.round(activeKey.rateLimitRemaining / activeKey.rateLimit * 100));
+      setTxt('token-remaining-val', rem + ' tkn');
+      const remFill = document.getElementById('token-remaining-fill');
+      if (remFill) remFill.style.width = remPct + '%';
     } else {
-      setTxt('token-rate-left', '—');
+      setTxt('token-rate-left', activeKey.tokensUsed ? fmtTok(activeKey.tokensUsed) + ' tkn ' + (ll==='es'?'usados':'used') : '—');
+      setTxt('token-remaining-val', ll === 'es' ? 'sin datos' : 'no data');
+      const remFill = document.getElementById('token-remaining-fill');
+      if (remFill) remFill.style.width = '0%';
     }
   } else {
     setTxt('token-key-used', '—');
     setTxt('token-rate-left', '—');
+    setTxt('token-remaining-val', '—');
+    const remFill = document.getElementById('token-remaining-fill');
+    if (remFill) remFill.style.width = '0%';
   }
 
   // ── History list: one row per turn, newest first ──────────────────────────
