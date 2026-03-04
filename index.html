@@ -333,16 +333,19 @@ body {
 
 .btn-copy-key {
   background: none;
-  border: 1px solid rgba(126,184,212,0.2);
-  color: rgba(126,184,212,0.6);
-  border-radius: 4px;
-  padding: 2px 6px;
-  font-size: 12px;
+  border: none;
+  color: rgba(126,184,212,0.45);
   cursor: pointer;
+  font-size: 13px;
+  padding: 2px 3px;
   transition: all 0.2s;
+  flex-shrink: 0;
   line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.btn-copy-key:hover { color: #7EB8D4; border-color: rgba(126,184,212,0.5); background: rgba(126,184,212,0.08); }
+.btn-copy-key:hover { color: #7EB8D4; }
 
 .btn-verify-keys {
   background: none;
@@ -2116,7 +2119,7 @@ function renderApiKeys() {
         </div>
         ${statusLabel}
         <span class="key-status ${status}"></span>
-        <button class="btn-copy-key" title="${lang==='es'?'Copiar clave':'Copy key'}" onclick="copyApiKey(${i})">⎘</button>
+        <button class="btn-copy-key" title="${lang==='es'?'Copiar clave':'Copy key'}" onclick="copyApiKey(${i})">⎙</button>
         <button class="btn-remove" onclick="removeApiKey(${i})">✕</button>
       `;
       list.appendChild(div);
@@ -2162,8 +2165,10 @@ async function callGroq(messages, systemPrompt, maxTokens = 300, temperature = 0
   if (!usable.length) throw new Error('ALL_EXHAUSTED');
 
   // Inject language instruction into system prompt
-  const langNote = bilingual
+  const langNote = bilingual === true
     ? `\n\nLANGUAGE: The user's selected interface language is "${lang === 'es' ? 'Spanish' : 'English'}". You MUST produce BOTH language versions in every response, using this exact format:\n[ES] respuesta completa en español\n[EN] complete response in English\nNever omit either block. Never add text outside these blocks.`
+    : bilingual === 'json'
+    ? `\n\nBILINGUAL JSON REQUIREMENT: You MUST fill in BOTH the Spanish (_es) AND English (_en) version of every bilingual field, regardless of the user's message language. Never leave a bilingual field null if you can translate it. Both versions are REQUIRED in every response.`
     : `\n\nLANGUAGE: Respond in ${lang === 'es' ? 'Spanish' : 'English'} only.`;
 
   const fullSystem = systemPrompt + langNote;
@@ -2475,7 +2480,7 @@ async function analyzeMessage(userMsg) {
   const tesisPrev = ubm.tesis.slice(-3).map(t => typeof t==='object'?(t.es||t.en||''):t).join('; ') || 'none';
   const prompt = `DIALOGUE HISTORY:\n${histStr}\n\nPREVIOUS THESES: ${tesisPrev}\nCURRENT PHASE: ${ubm.faseSocratica}\nEPISTEMIC STATE: ${ubm.estadoEpistemico}\n\nCURRENT MESSAGE:\n${userMsg}`;
   try {
-    const result = await callGroq([{role:'user',content:prompt}], SYSTEM_ANALISIS, 400, 0.15);
+    const result = await callGroq([{role:'user',content:prompt}], SYSTEM_ANALISIS, 400, 0.15, 'json');
     if (result.usage) lastTurnTokens.analysis = result.usage;
     const clean = result.content.replace(/```json\s*/g,'').replace(/```\s*/g,'');
     const match = clean.match(/\{[\s\S]*\}/);
@@ -2502,7 +2507,7 @@ async function updatePlan(analysis, userMsg) {
   const prompt = `CONVERSATION SO FAR:\n${histStr}\n\nUSER'S CURRENT POSITION: ${analysis.tesis_principal || userMsg}\nTOPIC: ${analysis.tema_detectado || plan.tema || 'unknown'}\nIMPLICIT ASSUMPTIONS: ${(analysis.tesis_implicitas||[]).join('; ') || 'none'}\n${stepInfo}\nCONTRADICTION REACHED: ${ubm.contradiccionAlcanzada}\n\nUpdate the strategic plan. Keep existing steps if topic unchanged; only regenerate if topic shifted. Advance paso_actual based on dialogue progress.`;
   
   try {
-    const result = await callGroq([{role:'user',content:prompt}], SYSTEM_ESTRATEGA, 500, 0.3);
+    const result = await callGroq([{role:'user',content:prompt}], SYSTEM_ESTRATEGA, 500, 0.3, 'json');
     if (result.usage) lastTurnTokens.strategy = result.usage;
     const clean = result.content.replace(/```json\s*/g,'').replace(/```\s*/g,'');
     const match = clean.match(/\{[\s\S]*\}/);
@@ -2619,20 +2624,32 @@ ${userMsg}`;
 
 function updateUBM(analysis) {
   ubm.turnos++;
-  const sc = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : (s || '');
+  // sc: capitalize. Returns null if input is null/undefined (so lang fallback works in render)
+  const sc = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : null;
   // Store bilingual {es,en,isNew} objects — panel switches language without new API calls
   if (analysis.tesis_principal_es || analysis.tesis_principal_en) {
-    ubm.tesis.push({ es: sc(analysis.tesis_principal_es), en: sc(analysis.tesis_principal_en), isNew: true });
+    // Fallback: if one language missing, use the other as provisional value
+    const tEs = sc(analysis.tesis_principal_es) || sc(analysis.tesis_principal_en);
+    const tEn = sc(analysis.tesis_principal_en) || sc(analysis.tesis_principal_es);
+    ubm.tesis.push({ es: tEs, en: tEn, isNew: true });
   }
   if (analysis.tesis_implicitas?.length) ubm.tesis_implicitas.push(...analysis.tesis_implicitas);
   if (analysis.contradiccion_es || analysis.contradiccion_en) {
-    ubm.contradicciones.push({ es: sc(analysis.contradiccion_es), en: sc(analysis.contradiccion_en), isNew: true });
+    const cEs = sc(analysis.contradiccion_es) || sc(analysis.contradiccion_en);
+    const cEn = sc(analysis.contradiccion_en) || sc(analysis.contradiccion_es);
+    ubm.contradicciones.push({ es: cEs, en: cEn, isNew: true });
   }
   const falas_es = analysis.falacias_es || []; const falas_en = analysis.falacias_en || [];
-  falas_es.forEach((f, idx) => {
-    const fEs = sc(f); const fEn = sc(falas_en[idx] || f);
-    if (!ubm.falacias.some(x => (typeof x==='object'?x.es:x)===fEs)) ubm.falacias.push({es:fEs, en:fEn, isNew:true});
-  });
+  // Also handle falacias_en entries that have no matching _es (and vice versa)
+  const maxFal = Math.max(falas_es.length, falas_en.length);
+  for (let fi = 0; fi < maxFal; fi++) {
+    const fEs = sc(falas_es[fi]) || sc(falas_en[fi]);
+    const fEn = sc(falas_en[fi]) || sc(falas_es[fi]);
+    if (!fEs && !fEn) continue;
+    if (!ubm.falacias.some(x => (typeof x==='object'?x.es:x)===fEs)) {
+      ubm.falacias.push({es: fEs, en: fEn, isNew: true});
+    }
+  }
   if (analysis.concepto_sin_definir && !ubm.conceptosSinDefinir.includes(analysis.concepto_sin_definir)) ubm.conceptosSinDefinir.push(analysis.concepto_sin_definir);
   if (analysis.calidad_argumento) {
     const score = Math.min(10, Math.max(1, parseInt(analysis.calidad_argumento)));
@@ -2641,7 +2658,9 @@ function updateUBM(analysis) {
     if (ubm.calidadArgumentos.length > 5) ubm.calidadArgumentos.shift();
   }
   if (analysis.patron_retorico_es || analysis.patron_retorico_en) {
-    ubm.patronRetorico = { es: sc(analysis.patron_retorico_es||''), en: sc(analysis.patron_retorico_en||'') };
+    const pEs = sc(analysis.patron_retorico_es) || sc(analysis.patron_retorico_en);
+    const pEn = sc(analysis.patron_retorico_en) || sc(analysis.patron_retorico_es);
+    ubm.patronRetorico = { es: pEs, en: pEn };
   }
 
   // Depth — re-evaluated each turn from rolling window, NOT permanently locked in
@@ -2761,7 +2780,10 @@ function renderUBM(strategy, analysis) {
     // Newest first; each item on its own line — no comma-joining
     list.innerHTML = [...items].reverse().map((item, ri) => {
       const isFirst = ri === 0;
-      const raw = typeof item==='object' ? (item[lang]||item.es||item.en||'') : (item||'');
+      // Use explicit check — empty string should NOT block fallback to other language
+      const raw = typeof item==='object'
+        ? (item[lang] || (lang==='en' ? item.es : item.en) || '')
+        : (item||'');
       if (!raw) return '';
       // Capitalise first letter, leave rest intact
       const txt = raw.charAt(0).toUpperCase() + raw.slice(1).replace(/\s*,\s*/g, ' · ');
@@ -2777,7 +2799,9 @@ function renderUBM(strategy, analysis) {
   renderItemList('ubm-falacias-container','ubm-falacias-list',ubm.falacias,'ubm-hist-fallacy-new warn');
   renderItemList('ubm-contradiction-container','ubm-contradiccion-list',ubm.contradicciones,'ubm-hist-contradiction-new danger');
   if (ubm.patronRetorico) {
-    const pt = typeof ubm.patronRetorico==='object'?(ubm.patronRetorico[lang]||ubm.patronRetorico.es||''):ubm.patronRetorico;
+    const pt = typeof ubm.patronRetorico==='object'
+      ? (ubm.patronRetorico[lang] || (lang==='en' ? ubm.patronRetorico.es : ubm.patronRetorico.en) || '')
+      : (ubm.patronRetorico||'');
     if (pt) { show('ubm-patron-container',true); set('ubm-patron',pt); } else show('ubm-patron-container',false);
   } else { show('ubm-patron-container',false); }
 }
