@@ -78,6 +78,7 @@ body {
 ═══════════════════════════════════════════ */
 #auth-screen {
   background: radial-gradient(ellipse at center, #1a1a2e 0%, var(--obsidian) 70%);
+  position: relative;
 }
 
 .auth-container {
@@ -132,6 +133,30 @@ body {
   padding: 36px;
   position: relative;
   overflow: hidden;
+}
+
+.auth-lang-btn-wrap {
+  position: absolute;
+  top: 20px;
+  right: 24px;
+}
+
+.auth-lang-btn {
+  background: none;
+  border: 1px solid rgba(201,168,76,0.25);
+  color: rgba(201,168,76,0.7);
+  font-family: 'Cinzel', serif;
+  font-size: 11px;
+  letter-spacing: 2px;
+  padding: 5px 12px;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: all 0.2s;
+}
+.auth-lang-btn:hover {
+  color: var(--gold);
+  border-color: rgba(201,168,76,0.5);
+  background: rgba(201,168,76,0.06);
 }
 
 .auth-card::before {
@@ -1270,6 +1295,9 @@ body {
 
 <!-- ═══════════════════════════════ AUTH -->
 <div class="screen" id="auth-screen">
+  <div class="auth-lang-btn-wrap">
+    <button class="auth-lang-btn" id="auth-lang-btn" onclick="toggleLang()">EN</button>
+  </div>
   <div class="auth-container">
     <div class="auth-logo">
       <span class="owl">🦉</span>
@@ -1310,11 +1338,11 @@ body {
         </div>
         <div class="field">
           <label data-i18n="auth.password">Contraseña</label>
-          <input type="password" id="reg-password" placeholder="Mínimo 8 caracteres" autocomplete="new-password">
+          <input type="password" id="reg-password" data-placeholder-i18n="auth.placeholder.min" placeholder="Mínimo 8 caracteres" autocomplete="new-password">
         </div>
         <div class="field">
           <label data-i18n="auth.confirm">Confirmar contraseña</label>
-          <input type="password" id="reg-confirm" placeholder="Repite la contraseña" autocomplete="new-password">
+          <input type="password" id="reg-confirm" data-placeholder-i18n="auth.placeholder.repeat" placeholder="Repite la contraseña" autocomplete="new-password">
         </div>
         <button class="btn-primary" onclick="register()" id="register-btn">
           <span data-i18n="auth.create">Crear cuenta</span>
@@ -1681,6 +1709,9 @@ const translations = {
     'toast.key.duplicate': 'Esta clave ya está añadida',
     'toast.reset': 'Conversación reiniciada',
     'placeholder.input': 'Expón tu idea o creencia filosófica...',
+    'auth.placeholder.min': 'Mínimo 8 caracteres',
+    'auth.placeholder.repeat': 'Repite la contraseña',
+    'auth.lang.toggle': 'English',
   },
   en: {
     'loading': 'Starting the Academy',
@@ -1692,6 +1723,7 @@ const translations = {
     'auth.confirm': 'Confirm password',
     'auth.forgot': 'Forgot your password?',
     'auth.verify.note': 'A verification email will be sent to your inbox.',
+    'auth.enter': 'Enter the Academy',
     'auth.create': 'Create account',
     'sidebar.beliefs': 'Belief Model',
     'sidebar.level': 'Philosophical level',
@@ -1735,6 +1767,9 @@ const translations = {
     'toast.key.duplicate': 'This key is already added',
     'toast.reset': 'Conversation reset',
     'placeholder.input': 'Share your philosophical idea or belief...',
+    'auth.placeholder.min': 'At least 8 characters',
+    'auth.placeholder.repeat': 'Repeat your password',
+    'auth.lang.toggle': 'Español',
   }
 };
 
@@ -1750,9 +1785,19 @@ function applyTranslations() {
     const val = translations[lang][key];
     if (val && typeof val === 'string') el.innerHTML = val;
   });
+  // Translate input placeholders tagged with data-placeholder-i18n
+  document.querySelectorAll('[data-placeholder-i18n]').forEach(el => {
+    const key = el.getAttribute('data-placeholder-i18n');
+    const val = translations[lang][key];
+    if (val) el.placeholder = val;
+  });
   const input = document.getElementById('message-input');
   if (input) input.placeholder = t('placeholder.input');
-  document.getElementById('lang-btn').textContent = lang === 'es' ? 'EN' : 'ES';
+  // Sync both lang toggle buttons (chat header + auth screen)
+  const chatLangBtn = document.getElementById('lang-btn');
+  if (chatLangBtn) chatLangBtn.textContent = lang === 'es' ? 'ES' : 'EN';
+  const authLangBtn = document.getElementById('auth-lang-btn');
+  if (authLangBtn) authLangBtn.textContent = lang === 'es' ? 'ES' : 'EN';
   // FIX: force random button text (data-i18n sometimes missed if button was hidden)
   const rBtn = document.getElementById('random-topic-btn');
   if (rBtn) rBtn.innerHTML = t('btn.random');
