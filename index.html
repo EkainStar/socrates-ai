@@ -1828,6 +1828,7 @@ window.register = async function() {
 };
 
 window.logout = async function() {
+  closeSettings();
   authInitialized = false;
   await signOut(auth);
 };
