@@ -181,6 +181,18 @@ body{font-family:'Cormorant Garamond',Georgia,serif;background:var(--obsidian);c
 .phase-warn-inner{background:rgba(201,123,48,0.07);border-color:rgba(201,123,48,0.2)}
 .panel-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:50;opacity:0;pointer-events:none;transition:opacity 0.3s;backdrop-filter:blur(4px)}
 .panel-overlay.open{opacity:1;pointer-events:all}
+.confirm-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity 0.25s;backdrop-filter:blur(6px)}
+.confirm-overlay.open{opacity:1;pointer-events:all}
+.confirm-box{background:var(--obsidian-mid);border:1px solid rgba(201,168,76,0.25);padding:36px 40px;max-width:380px;width:90%;position:relative;animation:fadeInUp 0.25s ease;text-align:center}
+.confirm-box::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent)}
+.confirm-icon{font-size:32px;margin-bottom:16px;display:block}
+.confirm-title{font-family:'Cinzel',serif;font-size:14px;letter-spacing:2px;color:var(--gold);margin-bottom:12px}
+.confirm-text{font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text-secondary);line-height:1.6;margin-bottom:28px}
+.confirm-buttons{display:flex;gap:12px;justify-content:center}
+.confirm-btn-cancel{background:none;border:1px solid rgba(201,168,76,0.2);color:var(--text-secondary);padding:10px 28px;font-family:'Cinzel',serif;font-size:11px;letter-spacing:2px;cursor:pointer;transition:var(--transition);border-radius:var(--radius)}
+.confirm-btn-cancel:hover{color:var(--gold);border-color:rgba(201,168,76,0.4)}
+.confirm-btn-ok{background:linear-gradient(135deg,var(--gold-dark),var(--gold));border:none;color:var(--obsidian);padding:10px 28px;font-family:'Cinzel',serif;font-size:11px;letter-spacing:2px;cursor:pointer;transition:var(--transition);border-radius:var(--radius)}
+.confirm-btn-ok:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(201,168,76,0.3)}
 .settings-panel{position:fixed;top:0;right:0;bottom:0;width:440px;background:var(--obsidian-mid);border-left:1px solid rgba(201,168,76,0.15);z-index:51;transform:translateX(100%);transition:transform 0.4s cubic-bezier(0.4,0,0.2,1);display:flex;flex-direction:column;overflow:hidden}
 .settings-panel.open{transform:translateX(0)}
 .panel-header{padding:24px 28px;border-bottom:1px solid rgba(201,168,76,0.1);display:flex;align-items:center;justify-content:space-between}
@@ -485,6 +497,19 @@ body{font-family:'Cormorant Garamond',Georgia,serif;background:var(--obsidian);c
     </div>
   </div>
 </div>
+<!-- CONFIRM RESET MODAL -->
+<div class="confirm-overlay" id="confirm-overlay">
+  <div class="confirm-box">
+    <span class="confirm-icon">🗑️</span>
+    <div class="confirm-title" id="confirm-title">NUEVA CONVERSACIÓN</div>
+    <div class="confirm-text" id="confirm-text">Se borrará la conversación actual de forma permanente. ¿Deseas continuar?</div>
+    <div class="confirm-buttons">
+      <button class="confirm-btn-cancel" id="confirm-cancel" onclick="closeConfirm()">Cancelar</button>
+      <button class="confirm-btn-ok" id="confirm-ok" onclick="doReset()">Aceptar</button>
+    </div>
+  </div>
+</div>
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendEmailVerification, sendPasswordResetEmail }
@@ -575,6 +600,9 @@ const T = {
     verify_note:'Se enviará un código de verificación a tu email.',
     btn_enter:'Entrar a la Academia', btn_create:'Crear cuenta',
     btn_reset:'Nueva conversación', btn_logout:'Cerrar sesión',
+    confirm_title:'NUEVA CONVERSACIÓN',
+    confirm_text:'Se borrará la conversación actual de forma permanente. ¿Deseas continuar?',
+    confirm_ok:'Aceptar', confirm_cancel:'Cancelar',
     welcome_quote:'"Solo sé que no sé nada.<br>¿Y tú, qué sabes realmente?"',
     input_hint:'Enter para enviar · Shift+Enter para nueva línea',
     settings_title:'CONFIGURACIÓN', settings_keys:'Claves API de Groq',
@@ -629,6 +657,9 @@ const T = {
     verify_note:'A verification email will be sent to your inbox.',
     btn_enter:'Enter the Academy', btn_create:'Create account',
     btn_reset:'New conversation', btn_logout:'Sign out',
+    confirm_title:'NEW CONVERSATION',
+    confirm_text:'The current conversation will be permanently deleted. Do you wish to continue?',
+    confirm_ok:'Accept', confirm_cancel:'Cancel',
     welcome_quote:'"I know that I know nothing.<br>And you — what do you truly know?"',
     input_hint:'Enter to send · Shift+Enter for new line',
     settings_title:'SETTINGS', settings_keys:'Groq API Keys',
@@ -692,6 +723,8 @@ function applyI18n() {
   txt('verify-note', 'verify_note');
   txt('btn-enter-lbl', 'btn_enter'); txt('btn-create-lbl', 'btn_create');
   txt('btn-reset-lbl', 'btn_reset'); txt('btn-logout-lbl', 'btn_logout');
+  txt('confirm-title', 'confirm_title'); txt('confirm-text', 'confirm_text');
+  txt('confirm-ok', 'confirm_ok'); txt('confirm-cancel', 'confirm_cancel');
   set('welcome-quote', 'welcome_quote');
   txt('input-hint', 'input_hint');
   txt('settings-title', 'settings_title'); txt('settings-keys-title', 'settings_keys');
@@ -1658,10 +1691,14 @@ function renderUBM(strategy) {
   setEl('ubm-fase',L(FASE_LABELS,ubm.faseSocratica)||'—');
   setEl('ubm-epistemic',L(EPIST_LABELS,ubm.estadoEpistemico)||'—');
   setEl('ubm-depth',L(PROF_LABELS,ubm.profundidad)||'—');
-  if(ubm.calidadArgumentos.length){
-    const avg=ubm.calidadArgumentos.reduce((a,b)=>a+b,0)/ubm.calidadArgumentos.length;
+  // Quality bar — always visible, shows 0/10 until first argument
+  {
+    const avg=ubm.calidadArgumentos.length
+      ? ubm.calidadArgumentos.reduce((a,b)=>a+b,0)/ubm.calidadArgumentos.length
+      : 0;
     const pct=(avg/10*100).toFixed(0);
-    setEl('ubm-quality-bar',`<div style="display:flex;align-items:center;gap:8px"><div style="flex:1;height:4px;background:rgba(201,168,76,0.15);border-radius:2px;overflow:hidden"><div style="width:${pct}%;height:100%;background:linear-gradient(90deg,var(--gold-dark),var(--gold));border-radius:2px;transition:width 0.4s ease"></div></div><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--gold);flex-shrink:0">${avg.toFixed(1)}/10</span></div>`);
+    const col=avg===0?'rgba(201,168,76,0.25)':'var(--gold)';
+    setEl('ubm-quality-bar',`<div style="display:flex;align-items:center;gap:8px"><div style="flex:1;height:4px;background:rgba(201,168,76,0.15);border-radius:2px;overflow:hidden"><div style="width:${pct}%;height:100%;background:linear-gradient(90deg,var(--gold-dark),var(--gold));border-radius:2px;transition:width 0.4s ease"></div></div><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:${col};flex-shrink:0">${avg===0?'—':avg.toFixed(1)+'/10'}</span></div>`);
     showEl('ubm-quality-container',true);
   }
   const tLbl=t('turns');const apoLbl=t('aporias');
@@ -1886,17 +1923,37 @@ function showTyping(visible) {
 }
 
 // ─── RESET ────────────────────────────────────
+// ─── CONFIRM RESET MODAL ──────────────────────
 window.resetConversation = function() {
+  // Show confirmation modal instead of resetting immediately
+  document.getElementById('confirm-overlay').classList.add('open');
+};
+window.closeConfirm = function() {
+  document.getElementById('confirm-overlay').classList.remove('open');
+};
+window.doReset = function() {
+  document.getElementById('confirm-overlay').classList.remove('open');
+  // Clear Firebase
+  clearConversation().catch(()=>{});
+  // Full state reset
   history=[];historyResumen='';displayMessages=[];
   ubm={tesis:[],contradicciones:[],falacias:[],tesis_implicitas:[],calidadArgumentos:[],patronRetorico:null,ultimoTipo:null,ultimasEstrategias:[],turnos:0,profundidad:'superficial',estadoEpistemico:'dogmatic',faseSocratica:'ironia',insights:0,aporias:0,contradiccionAlcanzada:false,score:50,phaseBlockedThisTurn:false,chatEvents:[],_newTesisThisTurn:null,_newContradiccionThisTurn:null,_newFalaciaThisTurn:null,_phaseJustChanged:null,_temaJustSet:false};
   plan={tema:null,tema_es:null,tema_en:null,tesis_inicial_es:null,tesis_inicial_en:null,contradiccion_objetivo_es:null,contradiccion_objetivo_en:null,definicion_en_construccion_es:null,definicion_en_construccion_en:null,pasos:[],paso_actual:0,fase:'detectar_tema'};
   lastTurnTokens={analysis:null,strategy:null,socrates:null};tokensHistory=[];
   apiKeys.forEach(k=>{k.tokensUsed=0;k.rateLimit=undefined;k.rateLimitRemaining=undefined;});
-  renderUBM(null);renderPlan();renderTokens();renderApiKeys();
+  // Full UI reset — same as page reload appearance
   const container=document.getElementById('messages');
-  container.innerHTML=`<div class="welcome-msg" id="welcome-msg"><div class="quote">${t('welcome_quote')}</div><div class="quote-author">— SÓCRATES</div></div>`;
+  container.innerHTML=`<div class="welcome-msg" id="welcome-msg"><div class="quote" id="welcome-quote">${t('welcome_quote')}</div><div class="quote-author">— SÓCRATES</div></div>`;
   document.getElementById('examples-row').style.display='flex';
-  clearConversation().catch(()=>{});toast(t('toast_reset'));
+  document.getElementById('send-btn').disabled=false;
+  document.getElementById('message-input').value='';
+  // Close settings panel if open
+  document.getElementById('settings-panel').classList.remove('open');
+  document.getElementById('panel-overlay').classList.remove('open');
+  // Hide typing indicator
+  document.getElementById('typing').classList.remove('visible');
+  // Re-render all panels fresh
+  applyI18n();renderUBM(null);renderPlan();renderTokens();renderApiKeys();
 };
 
 // ─── SETTINGS ─────────────────────────────────
