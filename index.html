@@ -569,6 +569,10 @@ let ubm = {
   turnos: 0, profundidad: 'superficial',
   estadoEpistemico: 'dogmatic', faseSocratica: 'ironia',
   insights: 0, aporias: 0, contradiccionAlcanzada: false,
+  // Active reference thesis — the position Socrates is testing contradictions against
+  tesisReferencia: null, // {es, en}
+  // Grace period: turns to skip contradiction detection after one is found
+  graceTrasContra: 0,
   // Scoring system (0–100)
   score: 50,
   // Phase blocked: can't advance if contradiction this turn
@@ -1284,8 +1288,12 @@ async function analyzeMessage(userMsg) {
   const histStr=history.length?summarizeHistory(history.slice(-10)):'none';
   const prevTesis=ubm.tesis.slice(-3).map(tt=>typeof tt==='object'?(tt.en||tt.es||''):(tt||'')).filter(Boolean).join('; ')||'none';
   const prevContra=ubm.contradicciones.slice(-2).map(c=>typeof c==='object'?(c.en||c.es||''):(c||'')).filter(Boolean).join('; ')||'none';
+  const refTesis=ubm.tesisReferencia?(ubm.tesisReferencia.en||ubm.tesisReferencia.es||'none'):'none';
+  const graceNote=ubm.graceTrasContra>0
+    ? `\nGRACE PERIOD ACTIVE: A contradiction was just detected last turn. DO NOT report any contradiction this turn — set contradiccion_es and contradiccion_en to null. Instead focus on detecting the user's NEW position/thesis after the contradiction.`
+    : `\nACTIVE REFERENCE THESIS (detect contradictions against THIS): "${refTesis}"\nOnly report a contradiction if the user's current message contradicts this specific reference thesis. Do not compare against older theses.`;
   const resumeNote=historyResumen?`EARLIER CONVERSATION SUMMARY:\n${historyResumen}\n\n`:'';
-  const prompt=`${resumeNote}RECENT CONVERSATION:\n${histStr}\n\nUSER'S PREVIOUS THESES: ${prevTesis}\nPREVIOUS CONTRADICTIONS ALREADY FOUND: ${prevContra}\nCURRENT DIALOGUE PHASE: ${ubm.faseSocratica}\nEPISTEMIC STATE: ${ubm.estadoEpistemico}\nTURN: ${ubm.turnos+1}\n\nUSER'S LATEST MESSAGE:\n${userMsg}`;
+  const prompt=`${resumeNote}RECENT CONVERSATION:\n${histStr}\n\nUSER'S PREVIOUS THESES: ${prevTesis}\nPREVIOUS CONTRADICTIONS ALREADY FOUND: ${prevContra}${graceNote}\nCURRENT DIALOGUE PHASE: ${ubm.faseSocratica}\nEPISTEMIC STATE: ${ubm.estadoEpistemico}\nTURN: ${ubm.turnos+1}\n\nUSER'S LATEST MESSAGE:\n${userMsg}`;
   try{
     const result=await callGroq([{role:'user',content:prompt}],SYSTEM_ANALISIS,700,0.15,'json');
     if(result.usage)lastTurnTokens.analysis=result.usage;
@@ -1305,10 +1313,12 @@ async function updatePlan(analysis, userMsg, phaseChanged) {
   const isNewTopic=analysis.es_tema_nuevo||!plan.pasos.length;
   const currentStep=plan.pasos[plan.paso_actual];
   const stepInfo=plan.pasos.length>0?`Current step: ${plan.paso_actual+1}/${plan.pasos.length} — "${currentStep?.descripcion_en||currentStep?.descripcion_es||''}"`: 'No plan yet — create one now.';
-  // Force full plan regeneration on: new topic, phase change, contradiction reached, or into maieusis
-  const needsRegen=isNewTopic||!!phaseChanged||ubm.contradiccionAlcanzada||['aporia_reached','maieusis_ready'].includes(analysis.fase_socratica_propuesta);
+  const hasContraThisTurn=!!ubm._newContradiccionThisTurn;
+  const needsRegen=isNewTopic||!!phaseChanged||hasContraThisTurn||ubm.contradiccionAlcanzada||['aporia_reached','maieusis_ready'].includes(analysis.fase_socratica_propuesta);
   const phaseNote=phaseChanged
-    ? `\n\nPHASE JUST CHANGED: ${phaseChanged.from} → ${phaseChanged.to}. MANDATORY: Regenerate the full plan with NEW steps specifically designed for the ${phaseChanged.to} phase. The previous steps are now outdated.`
+    ? `\n\nPHASE JUST CHANGED: ${phaseChanged.from} → ${phaseChanged.to}. MANDATORY: Regenerate the full plan with NEW steps for the ${phaseChanged.to} phase.`
+    : hasContraThisTurn
+    ? `\n\nCONTRADICTION DETECTED this turn: "${analysis.contradiccion_en||analysis.contradiccion_es||''}". MANDATORY: Regenerate the full plan from step 1. KEEP the SAME phase (${ubm.faseSocratica}). New steps must start by addressing this contradiction, then guide the user forward step by step within this phase.`
     : '';
   const resumeNote=historyResumen?`EARLIER CONVERSATION SUMMARY:\n${historyResumen}\n\n`:'';
   const prompt=`${resumeNote}RECENT CONVERSATION:\n${histStr}\n\nUSER'S CURRENT POSITION: ${currentTesis}\nTOPIC: ${plan.tema_en||plan.tema_es||'not established'}\nCURRENT PHASE: ${ubm.faseSocratica}\nEPISTEMIC STATE: ${ubm.estadoEpistemico}\nCONTRADICTION THIS TURN: ${analysis.contradiccion_en||analysis.contradiccion_es||'none'}\nCONTRADICTION OBJECTIVE REACHED: ${ubm.contradiccionAlcanzada}\nIMPLICIT PREMISES: ${(analysis.tesis_implicitas||[]).join('; ')||'none'}\n${stepInfo}${phaseNote}\n\n${needsRegen?'ACTION: Generate a FRESH COMPLETE PLAN. New steps tailored to the current phase and user state. At least 3 steps.':'ACTION: Keep existing steps. Update paso_actual and definicion_en_construccion only.'}`;
@@ -1337,57 +1347,62 @@ function advancePlanStep(analysis) {
   if(!plan.pasos.length)return;
   if(analysis.usuario_se_adelanta)return;
 
-  const hasContra=!!(analysis.contradiccion_es||analysis.contradiccion_en);
-  const hasFalacia=(analysis.falacias_es||[]).concat(analysis.falacias_en||[]).some(f=>!!sc(f));
+  const hasContra=ubm._newContradiccionThisTurn!==null; // already processed in updateUBM
+  const hasFalacia=ubm._newFalaciaThisTurn!==null;
 
-  // If CONTRADICTION: add a new step right after current one (Socrates must address it)
+  // CONTRADICTION: reset plan to step 0 (restart current phase plan)
+  // The strategist will regenerate a fresh plan for the same phase on this turn
   if(hasContra){
-    const contraEs=analysis.contradiccion_es||analysis.contradiccion_en||'';
-    const contraEn=analysis.contradiccion_en||analysis.contradiccion_es||'';
-    const extraStep={
-      numero:plan.paso_actual+2,
-      descripcion_es:`Señala directamente la contradicción: "${contraEs.substring(0,80)}". Pide al usuario que las reconcilie.`,
-      descripcion_en:`Directly name the contradiction: "${contraEn.substring(0,80)}". Ask the user to reconcile them.`,
-      pregunta_tipo:'coherencia_interna',
-      completado:false,
-      _inserted:true
-    };
-    plan.pasos.splice(plan.paso_actual+1,0,extraStep);
-    // Do NOT advance paso_actual — stay on current step (or move to the new one)
-    plan.paso_actual=Math.min(plan.paso_actual+1,plan.pasos.length-1);
+    // Reset all steps to not-completed and go back to step 0
+    plan.pasos.forEach(p=>{ p.completado=false; });
+    plan.paso_actual=0;
+    // Mark contradiccionAlcanzada only if it matches the objective
     if((analysis.contradiccion_es||analysis.contradiccion_en)&&plan.contradiccion_objetivo_es){
-      ubm.contradiccionAlcanzada=true;plan.fase='construir_definicion';
+      ubm.contradiccionAlcanzada=true;
+      plan.fase='construir_definicion';
     }
-    return; // no further advancement this turn
-  }
-
-  // If FALLACY only (no contradiction): mark current step as needing repeat — insert repeat step
-  if(hasFalacia&&!hasContra){
-    const fEs=analysis.falacias_es?.[0]||'';
-    const fEn=analysis.falacias_en?.[0]||fEs;
-    const repeatStep={
-      numero:plan.paso_actual+2,
-      descripcion_es:`Falacia detectada ("${sc(fEs)||sc(fEn)||''}"). Repite la pregunta anterior enfocando en el razonamiento válido.`,
-      descripcion_en:`Fallacy detected ("${sc(fEn)||sc(fEs)||''}"). Repeat the previous question focusing on valid reasoning.`,
-      pregunta_tipo:'fundamento_epistemico',
-      completado:false,
-      _inserted:true
-    };
-    plan.pasos.splice(plan.paso_actual+1,0,repeatStep);
-    // Advance to the repeat step
-    plan.pasos[plan.paso_actual].completado=true;
-    plan.paso_actual=Math.min(plan.paso_actual+1,plan.pasos.length-1);
     return;
   }
 
-  // Normal advance on genuine progress (no contradiction, no fallacy)
-  const shouldAdvance=
-    ['uncertain','aporetic'].includes(analysis.estado_epistemico)||
-    analysis.fase_socratica_propuesta==='aporia_reached'||
-    (analysis.calidad_argumento>=7);
-  if(shouldAdvance&&plan.paso_actual<plan.pasos.length-1){
-    plan.pasos[plan.paso_actual].completado=true;
-    plan.paso_actual++;
+  // FALLACY only: do NOT advance — repeat current step (stay put)
+  if(hasFalacia){
+    // No change to paso_actual — Socrates re-asks the same step
+    return;
+  }
+
+  // NORMAL: any substantive response (no contradiction, no fallacy) advances the plan
+  const q=analysis.calidad_argumento?Math.min(10,Math.max(1,parseInt(analysis.calidad_argumento))):0;
+  const isSubstantial=q>=3&&!analysis.es_evasion;
+  if(isSubstantial){
+    if(plan.pasos[plan.paso_actual])plan.pasos[plan.paso_actual].completado=true;
+    if(plan.paso_actual<plan.pasos.length-1)plan.paso_actual++;
+    // If we just completed the last step — phase gate will open in updateUBM
+  }
+}
+
+// ─── PHASE TRANSITION (called AFTER advancePlanStep) ──────────
+function evaluatePhaseTransition(analysis) {
+  if(ubm.phaseBlockedThisTurn)return; // blocked by contradiction
+  if(ubm.turnos<=1){ubm.faseSocratica='ironia';return;}
+  const PHASES=['ironia','elenchus_needed','aporia_reached','maieusis_ready','insight_emerging'];
+  const curIdx=PHASES.indexOf(ubm.faseSocratica);
+  if(curIdx>=PHASES.length-1)return; // already at last phase
+  if(analysis.usuario_se_adelanta)return;
+
+  // Gate: ALL steps completed (last step done + all prior done)
+  // Does NOT depend on model's fase_socratica_propuesta — plan completion is the only trigger
+  const allDone=plan.pasos.length===0||plan.pasos.every(p=>p.completado);
+  const lastStepDone=plan.pasos.length===0||(plan.pasos[plan.paso_actual]&&plan.pasos[plan.paso_actual].completado);
+  const onLastStep=plan.pasos.length===0||plan.paso_actual>=plan.pasos.length-1;
+
+  if((allDone||(onLastStep&&lastStepDone))){
+    const prev=ubm.faseSocratica;
+    ubm.faseSocratica=PHASES[curIdx+1];
+    ubm._phaseJustChanged={from:prev,to:ubm.faseSocratica};
+    ubm.score=Math.min(100,ubm.score+20);
+    if(ubm.tesisReferencia&&!ubm._newTesisThisTurn){
+      ubm._newTesisThisTurn=ubm.tesisReferencia;
+    }
   }
 }
 
@@ -1423,10 +1438,11 @@ function buildSocratesContext(analysis, userMsg) {
   if(falas.length)notes.push(`FALLACIES DETECTED: ${falas.join(', ')}`);
   if(analysis.es_evasion)notes.push('USER IS EVADING — return to the unanswered question.');
   if(analysis.usuario_se_adelanta)notes.push('⚠️ USER IS RUSHING — slow them down warmly. Return to the unanswered question. Do NOT validate premature conclusions.');
-  const allStepsDoneForPhase = plan.pasos.length===0 ||
-    plan.pasos.slice(0, plan.paso_actual+1).every(p=>p.completado);
-  if(!allStepsDoneForPhase){
-    notes.push(`PLAN GATE: The current plan step is NOT yet completed. Do NOT advance to the next phase. Stay on step ${plan.paso_actual+1}/${plan.pasos.length}: "${pasoDesc}". Keep working on it.`);
+  const currentStepDone = plan.pasos.length===0 ||
+    (plan.pasos[plan.paso_actual]&&plan.pasos[plan.paso_actual].completado);
+  const onLastStep = plan.pasos.length===0 || plan.paso_actual>=plan.pasos.length-1;
+  if(!currentStepDone&&!onLastStep){
+    notes.push(`PLAN GATE: Step ${plan.paso_actual+1}/${plan.pasos.length} not yet completed: "${pasoDesc}". Stay focused on it.`);
   }
   if(ubm.contradiccionAlcanzada)notes.push('CONTRADICTION OBJECTIVE REACHED — pivot to building JOINT DEFINITION together.');
   const ctxResume=historyResumen?`[EARLIER CONVERSATION SUMMARY:\n${historyResumen}]\n\n`:'';
@@ -1439,48 +1455,60 @@ function buildSocratesContext(analysis, userMsg) {
 // ─── UPDATE UBM ───────────────────────────────
 function updateUBM(analysis) {
   ubm.turnos++;
-  // Reset per-turn flags
   ubm._newTesisThisTurn=null;ubm._newContradiccionThisTurn=null;ubm._newFalaciaThisTurn=null;ubm._phaseJustChanged=null;ubm._temaJustSet=false;
   ubm.phaseBlockedThisTurn=false;
 
-  // ── TESIS ──
-  const{es:tEs,en:tEn}=fillBi(analysis.tesis_principal_es,analysis.tesis_principal_en);
-  if(tEs||tEn){
-    const last=ubm.tesis.length>0?ubm.tesis[ubm.tesis.length-1]:null;
-    const lastTxt=last?(last.en||last.es||''):'';
-    const newTxt=tEn||tEs||'';
-    const isDup=lastTxt&&(lastTxt.toLowerCase()===newTxt.toLowerCase()||lastTxt.toLowerCase().includes(newTxt.toLowerCase().substring(0,40)));
-    if(!isDup){
-      ubm.tesis.forEach(tt=>{if(typeof tt==='object')tt.isNew=false;});
-      ubm.tesis.push({es:tEs,en:tEn,isNew:true});
-      if(ubm.tesis.length>5)ubm.tesis.shift();
-      const isNewTopicTesis=analysis.es_tema_nuevo&&ubm.tesis.length===1;
-      const isPostAporiaNew=['maieusis_ready','insight_emerging'].includes(ubm.faseSocratica)&&ubm.aporias>0&&ubm.tesis.length>1;
-      if(isNewTopicTesis){ubm._newTesisThisTurn={es:tEs,en:tEn};ubm._temaJustSet=true;}
-      else if(isPostAporiaNew){ubm._newTesisThisTurn={es:tEs,en:tEn};}
-    }
-  }
+  // ── 1. CONTRADICCIONES — first, so phase and tesis can react ──
+  // Decrement grace period each turn
+  if(ubm.graceTrasContra>0)ubm.graceTrasContra--;
 
-  // ── CONTRADICCIONES ── (BLOCK phase advance + penalise score heavily)
   const{es:cEs,en:cEn}=fillBi(analysis.contradiccion_es,analysis.contradiccion_en);
-  if(cEs||cEn){
-    const last=ubm.contradicciones.length>0?ubm.contradicciones[ubm.contradicciones.length-1]:null;
-    const lastTxt=last?(last.en||last.es||''):'';
-    const newTxt=cEn||cEs||'';
-    const isDup=lastTxt&&lastTxt.toLowerCase()===newTxt.toLowerCase();
-    if(!isDup){
+  // Only process contradiction if NOT in grace period
+  if((cEs||cEn)&&ubm.graceTrasContra===0){
+    const lastC=ubm.contradicciones.length>0?ubm.contradicciones[ubm.contradicciones.length-1]:null;
+    const isDupC=lastC&&(lastC.en||lastC.es||'').toLowerCase()===(cEn||cEs).toLowerCase();
+    if(!isDupC){
       ubm.contradicciones.forEach(x=>{x.isNew=false;});
       ubm.contradicciones.push({es:cEs,en:cEn,isNew:true});
       if(ubm.contradicciones.length>5)ubm.contradicciones.shift();
       ubm._newContradiccionThisTurn={es:cEs,en:cEn};
-      // Block phase advance when contradiction detected
       ubm.phaseBlockedThisTurn=true;
-      // Score penalty: -15 per contradiction
       ubm.score=Math.max(0,ubm.score-15);
+      // Set grace period: next turn cannot have a new contradiction
+      ubm.graceTrasContra=1;
+      // Reset tesisReferencia — will be updated from new tesis this turn or next
+      ubm.tesisReferencia=null;
     }
   }
 
-  // ── FALACIAS ── (penalise score moderately)
+  // ── 2. PHASE TRANSITION — evaluated AFTER advancePlanStep (called from sendMessage) ──
+  // (moved to evaluatePhaseTransition so it runs after plan steps are updated)
+
+  if(analysis.fase_socratica_propuesta==='aporia_reached'&&ubm.faseSocratica==='aporia_reached')ubm.aporias++;
+  if(analysis.fase_socratica_propuesta==='insight_emerging'&&ubm.faseSocratica==='insight_emerging')ubm.insights++;
+
+  // ── 3. TESIS — third, reacts to contradiction and phase flags ──
+  const{es:tEs,en:tEn}=fillBi(analysis.tesis_principal_es,analysis.tesis_principal_en);
+  if(tEs||tEn){
+    const lastT=ubm.tesis.length>0?ubm.tesis[ubm.tesis.length-1]:null;
+    const lastTTxt=lastT?(lastT.en||lastT.es||''):'';
+    const newTTxt=tEn||tEs||'';
+    const isDupT=lastTTxt&&(lastTTxt.toLowerCase()===newTTxt.toLowerCase()||lastTTxt.toLowerCase().includes(newTTxt.toLowerCase().substring(0,40)));
+    if(!isDupT){
+      ubm.tesis.forEach(tt=>{if(typeof tt==='object')tt.isNew=false;});
+      ubm.tesis.push({es:tEs,en:tEn,isNew:true});
+      if(ubm.tesis.length>5)ubm.tesis.shift();
+      // Update active reference thesis — used by analyzer to detect contradictions
+      ubm.tesisReferencia={es:tEs,en:tEn};
+      // Show tesis on: first ever, OR after new contradiction, OR after phase change
+      if(ubm.tesis.length===1||ubm._newContradiccionThisTurn||ubm._phaseJustChanged){
+        ubm._newTesisThisTurn={es:tEs,en:tEn};
+        ubm._temaJustSet=true;
+      }
+    }
+  }
+
+  // ── 4. FALACIAS ──
   const falas_es=analysis.falacias_es||[];const falas_en=analysis.falacias_en||[];
   const maxFal=Math.max(falas_es.length,falas_en.length);
   let newFalFound=null;
@@ -1488,69 +1516,41 @@ function updateUBM(analysis) {
   for(let fi=0;fi<maxFal;fi++){
     const{es:fEs,en:fEn}=fillBi(falas_es[fi],falas_en[fi]);
     if(!fEs&&!fEn)continue;
-    const txt=fEn||fEs;
-    const already=ubm.falacias.some(x=>(x.en||x.es||'').toLowerCase()===txt.toLowerCase());
+    const already=ubm.falacias.some(x=>(x.en||x.es||'').toLowerCase()===(fEn||fEs).toLowerCase());
     if(!already){
       ubm.falacias.push({es:fEs,en:fEn,isNew:true});
       if(!newFalFound)newFalFound={es:fEs,en:fEn};
-      // Score penalty: -6 per fallacy
       ubm.score=Math.max(0,ubm.score-6);
     }
   }
   if(ubm.falacias.length>8)ubm.falacias=ubm.falacias.slice(-8);
   if(newFalFound)ubm._newFalaciaThisTurn=newFalFound;
 
-  // ── PATRON ──
+  // ── 5. PATRON ──
   if(analysis.patron_retorico_es||analysis.patron_retorico_en){
     const{es:pEs,en:pEn}=fillBi(analysis.patron_retorico_es,analysis.patron_retorico_en);
     if(pEs||pEn)ubm.patronRetorico={es:pEs,en:pEn};
   }
 
-  // ── PROFUNDIDAD ──
+  // ── 6. PROFUNDIDAD ──
   const profLevels=['superficial','developing','reflective','critical','dialectical'];
   if(analysis.profundidad&&profLevels.includes(analysis.profundidad)){
-    const newIdx=profLevels.indexOf(analysis.profundidad);
-    const oldIdx=profLevels.indexOf(ubm.profundidad);
-    ubm.profundidad=profLevels[Math.max(0,Math.min(profLevels.length-1,oldIdx+Math.sign(newIdx-oldIdx)))];
+    const ni=profLevels.indexOf(analysis.profundidad),oi=profLevels.indexOf(ubm.profundidad);
+    ubm.profundidad=profLevels[Math.max(0,Math.min(profLevels.length-1,oi+Math.sign(ni-oi)))];
   }
 
-  // ── CALIDAD ──
+  // ── 7. CALIDAD + SCORE ──
   const rawQ=analysis.calidad_argumento?Math.min(10,Math.max(1,parseInt(analysis.calidad_argumento))):null;
   if(rawQ!=null){
     ubm.calidadArgumentos.push(rawQ);
     if(ubm.calidadArgumentos.length>5)ubm.calidadArgumentos.shift();
-    // Score: +0..+4 based on quality (only if no contradiction this turn)
     if(!ubm._newContradiccionThisTurn){
-      const bonus=Math.round((rawQ-3)*0.8); // quality 5→+1.6, quality 8→+4
+      const bonus=Math.round((rawQ-3)*0.8);
       ubm.score=Math.min(100,Math.max(0,ubm.score+Math.max(0,bonus)));
     }
   }
 
   if(analysis.estado_epistemico)ubm.estadoEpistemico=analysis.estado_epistemico;
-
-  // ── PHASE TRANSITION — blocked if contradiction this turn OR plan steps not completed ──
-  const PHASES=['ironia','elenchus_needed','aporia_reached','maieusis_ready','insight_emerging'];
-  if(ubm.turnos<=1){
-    ubm.faseSocratica='ironia';
-  }else if(!ubm.phaseBlockedThisTurn){
-    const curIdx=PHASES.indexOf(ubm.faseSocratica);
-    const propIdx=PHASES.indexOf(analysis.fase_socratica_propuesta||ubm.faseSocratica);
-    if(!analysis.usuario_se_adelanta&&propIdx>curIdx){
-      // Check all plan steps up to (and including) paso_actual are completed
-      const allStepsDone = plan.pasos.length===0 ||
-        plan.pasos.slice(0, plan.paso_actual+1).every(p=>p.completado);
-      if(allStepsDone){
-        const nextIdx=Math.min(curIdx+1,PHASES.length-1);
-        const prev=ubm.faseSocratica;
-        ubm.faseSocratica=PHASES[nextIdx];
-        ubm._phaseJustChanged={from:prev,to:ubm.faseSocratica};
-        // Score boost for phase advance: +20
-        ubm.score=Math.min(100,ubm.score+20);
-      }
-    }
-  }
-  if(analysis.fase_socratica_propuesta==='aporia_reached'&&ubm.faseSocratica==='aporia_reached')ubm.aporias++;
-  if(analysis.fase_socratica_propuesta==='insight_emerging'&&ubm.faseSocratica==='insight_emerging')ubm.insights++;
 }
 
 // ─── STRATEGY SELECTION ──────────────────────
@@ -1563,19 +1563,22 @@ function decideStrategy(analysis) {
   if(ubm.faseSocratica==='insight_emerging')return pick('reconocer_aporia');
   if((analysis.contradiccion_es||analysis.contradiccion_en)&&ubm.turnos>1)return pick('coherencia_interna');
   const POOLS={
-    ironia:['premisa_implicita','fundamento_epistemico','perspectiva_radicalmente_opuesta','reencuadre_ironico','implicacion_moral'],
-    elenchus_needed:['contraejemplo_limite','premisa_implicita','reduccion_absurdo','coherencia_interna','fundamento_epistemico','perspectiva_radicalmente_opuesta','implicacion_moral'],
+    ironia:['premisa_implicita','fundamento_epistemico','perspectiva_radicalmente_opuesta','reencuadre_ironico','implicacion_moral','definicion_precisa'],
+    elenchus_needed:['contraejemplo_limite','premisa_implicita','reduccion_absurdo','coherencia_interna','fundamento_epistemico','perspectiva_radicalmente_opuesta','implicacion_moral','desafio_directo'],
     aporia_reached:['reconocer_aporia','parir_verdad','fundamento_epistemico'],
     maieusis_ready:['parir_verdad','definicion_precisa','fundamento_epistemico'],
     insight_emerging:['reconocer_aporia','parir_verdad']
   };
-  const pasoActual=plan.pasos[plan.paso_actual];
-  if(pasoActual?.pregunta_tipo&&!ubm.ultimasEstrategias.includes(pasoActual.pregunta_tipo))return pick(pasoActual.pregunta_tipo);
+  // Priority: pool excluding last 3 used → then paso pregunta_tipo → then rec → fallback
   const pool=(POOLS[ubm.faseSocratica]||ALL_STRATS).filter(s=>!ubm.ultimasEstrategias.includes(s));
   if(pool.length>0)return pick(pool[Math.floor(Math.random()*pool.length)]);
+  // Pool exhausted — try paso tipo or rec
+  const pasoActual=plan.pasos[plan.paso_actual];
+  if(pasoActual?.pregunta_tipo&&pasoActual.pregunta_tipo!==ubm.ultimoTipo)return pick(pasoActual.pregunta_tipo);
   const rec=analysis.estrategia_recomendada;
-  if(rec&&rec!==ubm.ultimoTipo)return pick(rec); // pick() sanitizes unknown keys
-  return pick(ALL_STRATS.filter(s=>s!==ubm.ultimoTipo)[0]||ALL_STRATS[0]);
+  if(rec&&rec!==ubm.ultimoTipo)return pick(rec);
+  // Last resort: anything different from last used
+  return pick((POOLS[ubm.faseSocratica]||ALL_STRATS).filter(s=>s!==ubm.ultimoTipo)[0]||ALL_STRATS[0]);
 }
 function pick(strategy) {
   // Normalize: if not a core strategy key, try to resolve via STRAT_LABELS alias
@@ -1590,7 +1593,7 @@ function pick(strategy) {
       strategy='fundamento_epistemico';
     }
   }
-  ubm.ultimasEstrategias=[strategy,...ubm.ultimasEstrategias].slice(0,3);
+  ubm.ultimasEstrategias=[strategy,...ubm.ultimasEstrategias].slice(0,4);
   return strategy;
 }
 
@@ -1612,6 +1615,7 @@ window.sendMessage = async function() {
     const analysis=await analyzeMessage(msg);
     updateUBM(analysis);
     advancePlanStep(analysis);
+    evaluatePhaseTransition(analysis); // must run AFTER advancePlanStep marks last step done
     // CALL 2 — Strategic plan (pass phase change info for forced regen)
     await updatePlan(analysis,msg,ubm._phaseJustChanged).catch(e=>console.warn('[Plan update failed]',e.message));
     // Strategy
@@ -1741,8 +1745,16 @@ function renderUBM(strategy) {
 
 // ─── RENDER PLAN ──────────────────────────────
 function renderPlan() {
+  // Badge: show when there's a new contradiction this turn OR objective reached
   const badge=document.getElementById('plan-contradiccion-badge');
-  if(badge){badge.textContent=t('badge_contra');badge.style.display=ubm.contradiccionAlcanzada?'block':'none';}
+  if(badge){
+    const showBadge=ubm.contradiccionAlcanzada||!!ubm._newContradiccionThisTurn;
+    badge.textContent=ubm.contradiccionAlcanzada?t('badge_contra'):(lang==='es'?'⚡ Contradicción detectada':'⚡ Contradiction detected');
+    badge.style.display=showBadge?'block':'none';
+    badge.style.background=ubm.contradiccionAlcanzada?'rgba(201,168,76,0.08)':'rgba(212,126,126,0.08)';
+    badge.style.borderColor=ubm.contradiccionAlcanzada?'rgba(201,168,76,0.35)':'rgba(212,126,126,0.35)';
+    badge.style.color=ubm.contradiccionAlcanzada?'var(--gold)':'#E07070';
+  }
   const getPlan=(fieldEs,fieldEn)=>{
     const v=lang==='en'?(plan[fieldEn]||plan[fieldEs]):(plan[fieldEs]||plan[fieldEn]);return v||'—';
   };
@@ -1755,8 +1767,10 @@ function renderPlan() {
     else{
       pasosEl.innerHTML='';
       plan.pasos.forEach((paso,i)=>{
-        const isCurrent=i===plan.paso_actual&&!ubm.contradiccionAlcanzada;
+        const isLast=i===plan.pasos.length-1;
         const isDone=paso.completado||i<plan.paso_actual;
+        // On last step: if completed, show as done (not current) even if paso_actual points here
+        const isCurrent=i===plan.paso_actual&&!isDone;
         const desc=lang==='en'?(paso.descripcion_en||paso.descripcion_es||''):(paso.descripcion_es||paso.descripcion_en||'');
         const div=document.createElement('div');
         div.style.cssText=`display:flex;gap:8px;align-items:flex-start;margin-bottom:8px;opacity:${isDone?'0.38':isCurrent?'1':'0.58'}`;
@@ -1937,7 +1951,7 @@ window.doReset = function() {
   clearConversation().catch(()=>{});
   // Full state reset
   history=[];historyResumen='';displayMessages=[];
-  ubm={tesis:[],contradicciones:[],falacias:[],tesis_implicitas:[],calidadArgumentos:[],patronRetorico:null,ultimoTipo:null,ultimasEstrategias:[],turnos:0,profundidad:'superficial',estadoEpistemico:'dogmatic',faseSocratica:'ironia',insights:0,aporias:0,contradiccionAlcanzada:false,score:50,phaseBlockedThisTurn:false,chatEvents:[],_newTesisThisTurn:null,_newContradiccionThisTurn:null,_newFalaciaThisTurn:null,_phaseJustChanged:null,_temaJustSet:false};
+  ubm={tesis:[],contradicciones:[],falacias:[],tesis_implicitas:[],calidadArgumentos:[],patronRetorico:null,ultimoTipo:null,ultimasEstrategias:[],turnos:0,profundidad:'superficial',estadoEpistemico:'dogmatic',faseSocratica:'ironia',insights:0,aporias:0,contradiccionAlcanzada:false,tesisReferencia:null,graceTrasContra:0,score:50,phaseBlockedThisTurn:false,chatEvents:[],_newTesisThisTurn:null,_newContradiccionThisTurn:null,_newFalaciaThisTurn:null,_phaseJustChanged:null,_temaJustSet:false};
   plan={tema:null,tema_es:null,tema_en:null,tesis_inicial_es:null,tesis_inicial_en:null,contradiccion_objetivo_es:null,contradiccion_objetivo_en:null,definicion_en_construccion_es:null,definicion_en_construccion_en:null,pasos:[],paso_actual:0,fase:'detectar_tema'};
   lastTurnTokens={analysis:null,strategy:null,socrates:null};tokensHistory=[];
   apiKeys.forEach(k=>{k.tokensUsed=0;k.rateLimit=undefined;k.rateLimitRemaining=undefined;});
@@ -2123,7 +2137,7 @@ onAuthStateChanged(auth, async user => {
   }else{
     currentUser=null;authInitialized=false;
     apiKeys=[];history=[];historyResumen='';displayMessages=[];
-    ubm={tesis:[],contradicciones:[],falacias:[],tesis_implicitas:[],calidadArgumentos:[],patronRetorico:null,ultimoTipo:null,ultimasEstrategias:[],turnos:0,profundidad:'superficial',estadoEpistemico:'dogmatic',faseSocratica:'ironia',insights:0,aporias:0,contradiccionAlcanzada:false,score:50,phaseBlockedThisTurn:false,chatEvents:[],_newTesisThisTurn:null,_newContradiccionThisTurn:null,_newFalaciaThisTurn:null,_phaseJustChanged:null,_temaJustSet:false};
+    ubm={tesis:[],contradicciones:[],falacias:[],tesis_implicitas:[],calidadArgumentos:[],patronRetorico:null,ultimoTipo:null,ultimasEstrategias:[],turnos:0,profundidad:'superficial',estadoEpistemico:'dogmatic',faseSocratica:'ironia',insights:0,aporias:0,contradiccionAlcanzada:false,tesisReferencia:null,graceTrasContra:0,score:50,phaseBlockedThisTurn:false,chatEvents:[],_newTesisThisTurn:null,_newContradiccionThisTurn:null,_newFalaciaThisTurn:null,_phaseJustChanged:null,_temaJustSet:false};
     plan={tema:null,tema_es:null,tema_en:null,tesis_inicial_es:null,tesis_inicial_en:null,contradiccion_objetivo_es:null,contradiccion_objetivo_en:null,definicion_en_construccion_es:null,definicion_en_construccion_en:null,pasos:[],paso_actual:0,fase:'detectar_tema'};
     lastTurnTokens={analysis:null,strategy:null,socrates:null};tokensHistory=[];
     applyI18n();showScreen('auth-screen');
