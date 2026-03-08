@@ -381,9 +381,7 @@ body{font-family:'Cormorant Garamond',Georgia,serif;background:var(--obsidian);c
         <div class="sidebar-section" id="plan-section">
           <div class="sidebar-title" id="plan-section-title">🎯 Plan Estratégico</div>
           <div class="ubm-item"><div class="ubm-label" id="plan-label-tema">Tema</div><div class="ubm-value" id="plan-tema" style="color:var(--gold);font-style:italic"></div></div>
-          <div class="ubm-item"><div class="ubm-label" id="plan-label-objetivo">Contradicción objetivo</div><div class="ubm-value" id="plan-objetivo" style="font-size:12px;line-height:1.6;font-style:normal"></div></div>
           <div class="ubm-item"><div class="ubm-label" id="plan-label-pasos">Pasos del plan</div><div id="plan-pasos" style="margin-top:6px"></div></div>
-          <div id="plan-contradiccion-badge" style="display:none;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.35);padding:8px 10px;margin-top:10px;font-size:10px;color:var(--gold);text-align:center;font-family:'Cinzel',serif;letter-spacing:2px;border-radius:2px">✦ CONTRADICCIÓN ALCANZADA ✦</div>
           <div class="ubm-item" style="margin-top:10px"><div class="ubm-label" id="plan-label-definicion">Definición en construcción</div><div class="ubm-value" id="plan-definicion" style="font-style:italic;font-size:12px;color:var(--gold-light);line-height:1.6"></div></div>
         </div>
       </div>
@@ -510,6 +508,17 @@ body{font-family:'Cormorant Garamond',Georgia,serif;background:var(--obsidian);c
   </div>
 </div>
 
+<div class="confirm-overlay" id="insight-modal">
+  <div class="confirm-box">
+    <span class="confirm-icon">✨</span>
+    <div class="confirm-title" id="insight-modal-title">INSIGHT ALCANZADO</div>
+    <div class="confirm-text" id="insight-modal-text">Has completado el diálogo socrático con éxito.</div>
+    <div class="confirm-buttons">
+      <button class="confirm-btn-ok" id="insight-modal-ok" onclick="document.getElementById('insight-modal').classList.remove('open')">Aceptar</button>
+    </div>
+  </div>
+</div>
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendEmailVerification, sendPasswordResetEmail }
@@ -607,6 +616,9 @@ const T = {
     confirm_title:'NUEVA CONVERSACIÓN',
     confirm_text:'Se borrará la conversación actual de forma permanente. ¿Deseas continuar?',
     confirm_ok:'Aceptar', confirm_cancel:'Cancelar',
+    insight_modal_title:'✨ INSIGHT ALCANZADO',
+    insight_modal_text:'Has completado el diálogo socrático con éxito. El tema ha sido explorado en su totalidad. Puedes seguir conversando — se seguirán detectando contradicciones, falacias y nuevas tesis, y las puntuaciones se actualizarán, pero no habrá más progresión de nivel.',
+    insight_modal_ok:'Aceptar',
     welcome_quote:'"Solo sé que no sé nada.<br>¿Y tú, qué sabes realmente?"',
     input_hint:'Enter para enviar · Shift+Enter para nueva línea',
     settings_title:'CONFIGURACIÓN', settings_keys:'Claves API de Groq',
@@ -643,7 +655,7 @@ const T = {
     tlbl_socrates:'Sócrates', tlbl_turn_total:'TURNO TOTAL',
     turns:'turnos', aporias:'aporías', none_detected:'Ninguna detectada',
     new_badge:'NUEVA', verify_btn:'↻ Verificar',
-    chat_event_tesis:'Tesis inicial del diálogo',
+    chat_event_tesis:'Nueva tesis',
     chat_event_contra:'Contradicción detectada',
     chat_event_falacia:'Falacia detectada',
     lbl_score:'Puntuación filosófica',
@@ -664,6 +676,9 @@ const T = {
     confirm_title:'NEW CONVERSATION',
     confirm_text:'The current conversation will be permanently deleted. Do you wish to continue?',
     confirm_ok:'Accept', confirm_cancel:'Cancel',
+    insight_modal_title:'✨ INSIGHT REACHED',
+    insight_modal_text:'You have completed the Socratic dialogue successfully. The topic has been fully explored. You can keep chatting — contradictions, fallacies and new theses will still be detected and scores updated — but there will be no further level progression.',
+    insight_modal_ok:'Accept',
     welcome_quote:'"I know that I know nothing.<br>And you — what do you truly know?"',
     input_hint:'Enter to send · Shift+Enter for new line',
     settings_title:'SETTINGS', settings_keys:'Groq API Keys',
@@ -700,7 +715,7 @@ const T = {
     tlbl_socrates:'Socrates', tlbl_turn_total:'TURN TOTAL',
     turns:'turns', aporias:'aporias', none_detected:'None detected',
     new_badge:'NEW', verify_btn:'↻ Verify',
-    chat_event_tesis:'Opening thesis of the dialogue',
+    chat_event_tesis:'New thesis',
     chat_event_contra:'Contradiction detected',
     chat_event_falacia:'Fallacy detected',
     lbl_score:'Philosophical score',
@@ -729,6 +744,8 @@ function applyI18n() {
   txt('btn-reset-lbl', 'btn_reset'); txt('btn-logout-lbl', 'btn_logout');
   txt('confirm-title', 'confirm_title'); txt('confirm-text', 'confirm_text');
   txt('confirm-ok', 'confirm_ok'); txt('confirm-cancel', 'confirm_cancel');
+  txt('insight-modal-title', 'insight_modal_title'); txt('insight-modal-text', 'insight_modal_text');
+  txt('insight-modal-ok', 'insight_modal_ok');
   set('welcome-quote', 'welcome_quote');
   txt('input-hint', 'input_hint');
   txt('settings-title', 'settings_title'); txt('settings-keys-title', 'settings_keys');
@@ -1000,12 +1017,11 @@ function renderApiKeys() {
 
 // ─── GROQ API ─────────────────────────────────
 function extractLang(raw, language) {
-  const esMatch=raw.match(/\[ES\]([\s\S]*?)(?=\[EN\]|$)/);
-  const enMatch=raw.match(/\[EN\]([\s\S]*?)$/);
-  const es=esMatch?esMatch[1].trim():null;
-  const en=enMatch?enMatch[1].trim():null;
-  if(language==='es')return es||en||raw.trim();
-  return en||es||raw.trim();
+  const parts = raw.split('<<<ES/EN>>>');
+  const es = parts[0]?.trim() || null;
+  const en = parts[1]?.trim() || null;
+  if(language==='es') return es || en || raw.trim();
+  return en || es || raw.trim();
 }
 async function callGroq(messages, systemPrompt, maxTokens=300, temperature=0.7, bilingualMode=false) {
   if(!apiKeys.length)throw new Error('NO_KEYS');
@@ -1013,7 +1029,7 @@ async function callGroq(messages, systemPrompt, maxTokens=300, temperature=0.7, 
   if(!usable.length)throw new Error('ALL_EXHAUSTED');
   let langNote;
   if(bilingualMode===true){
-    langNote=`\n\nLANGUAGE REQUIREMENT: You MUST respond in BOTH languages:\n[ES] respuesta completa en español\n[EN] complete response in English\nNever omit either block. Never add text outside these blocks.`;
+    langNote=`\n\nLANGUAGE RULE: Respond in the same language the user wrote in. If no language is detectable, respond in ${lang==='es'?'Spanish':'English'}. Single language only — no translations.`;
   } else if(bilingualMode==='json'){
     langNote=`\n\nBILINGUAL JSON REQUIREMENT — MANDATORY: Every _es field MUST have Spanish. Every _en field MUST have English. NEVER return null for a bilingual field if the other language has content — translate it. falacias_es and falacias_en must be same length with parallel translations. contradiccion_es and _en must BOTH be non-null or BOTH null. tesis_principal_es and _en must BOTH be non-null or BOTH null.`;
   } else {
@@ -1104,7 +1120,7 @@ Return ONLY valid JSON — no markdown, no preamble, no explanation.
   "es_evasion": boolean — true if user avoids the question or changes subject,
   "es_ironia": boolean — true if user is being ironic or sarcastic,
   "usuario_se_adelanta": boolean — true if user claims insight or reaches conclusion before Socrates has guided them there,
-  "calidad_argumento": integer 1-10 — BE STRICT: bare assertion = 2-3, weak reasoning = 4-5, solid = 7-8, exceptional = 9-10. Most messages = 3-5.,
+  "calidad_argumento": integer 1-10 — Judge reasoning quality only, not eloquence. Scale: 1-2=bare assertion or evasion, 3-4=weak reasoning or unsupported claim, 5-6=some reasoning with gaps, 7-8=solid argument with evidence or logical structure, 9-10=exceptional — precise definitions, anticipates objections, demonstrates genuine philosophical insight. Use the full scale honestly.
   "patron_retorico_es": "One sentence about HOW the user argues — their rhetorical style — in Spanish",
   "patron_retorico_en": "Same in English",
   "estrategia_recomendada": "definicion_precisa|contraejemplo_limite|premisa_implicita|reduccion_absurdo|coherencia_interna|implicacion_moral|perspectiva_radicalmente_opuesta|fundamento_epistemico|desafio_directo|reencuadre_ironico|parir_verdad|reconocer_aporia"
@@ -1126,24 +1142,59 @@ FASE: Judge strictly:
 - insight_emerging: user spontaneously constructs positive understanding
 Never skip. Never go back.
 
-CALIDAD: Judge reasoning quality only — not eloquence. Bare assertions = 2-3.`;
+CALIDAD: Judge reasoning quality only — not eloquence. Use the full 1-10 scale. A philosophically precise, well-structured argument that anticipates objections deserves 8-10. Do not cap at 5 by default.`;
 
 
-const SYSTEM_ESTRATEGA = `You are the hidden strategic mind of Socrates. Design and maintain a precise multi-step plan to expose an internal contradiction in the user's philosophical position.
+const SYSTEM_ESTRATEGA = `You are the hidden strategic mind of Socrates. You design the precise multi-step plan that guides the dialogue through the Socratic method.
 
-You receive: conversation, user's thesis, analysis results, current plan state.
+═══ PHASE-SPECIFIC PLAN FORMATS ═══
 
-RULES:
-- ALWAYS produce a complete plan — even on turn 1 (minimum 3 steps).
-- Steps must be CONCRETE and SPECIFIC actions. Example: "Ask user to define 'happiness' precisely", "Present counterexample: if justice = giving each what they deserve, what about someone born into poverty?", "Point out: earlier you said X, now you say Y — are these compatible?"
-- Be PATIENT — each step may need 2-3 turns.
-- The target contradiction must be INTERNAL to the user's own position.
-- CRITICAL: When a PHASE CHANGE occurs, you MUST regenerate the ENTIRE plan from scratch with steps appropriate for the NEW phase:
-  * ironia → elenchus_needed: Now probe tensions. Steps focus on surfacing contradictions.
-  * elenchus_needed → aporia_reached: Honor confusion. Steps focus on deepening the aporia.
-  * aporia_reached → maieusis_ready: Build together. Steps focus on joint construction of definition.
-  * maieusis_ready → insight_emerging: Celebrate and deepen. Steps focus on the emerging insight.
-- Update paso_actual when genuine progress is made (user shows uncertainty, contradiction surfaces, phase advances).
+Each phase has a different objective, step structure, and completion condition. Generate steps appropriate ONLY for the current phase.
+
+━━━ PHASE 1: IRONIA ━━━
+OBJECTIVE: Draw out and pin down the user's position precisely. Make them commit to specific claims.
+STEP TYPES: definicion_precisa, premisa_implicita, fundamento_epistemico, implicacion_moral
+STEP FORMAT: "Ask user to define X precisely", "Ask what they mean by Y", "Ask how principle Z applies to case W"
+NUMBER OF STEPS: 3–4
+COMPLETION CONDITION: Steps complete when user has committed to a clear, specific position. NO contradiction required. Move to ELENCHUS once position is fully exposed.
+DO NOT: Challenge or probe contradictions yet. Only clarify and commit.
+
+━━━ PHASE 2: ELENCHUS ━━━
+OBJECTIVE: Surface the internal contradiction in the user's position through systematic questioning.
+STEP TYPES: contraejemplo_limite, reduccion_absurdo, coherencia_interna, perspectiva_radicalmente_opuesta, premisa_implicita
+STEP FORMAT: "Present counterexample X — ask how it fits their definition", "Ask: if [claim A] is true, what about [case B]?", "Point out tension between [X] and [Y] they said earlier"
+NUMBER OF STEPS: 3–5
+COMPLETION CONDITION: ⚠️ ELENCHUS REQUIRES A CONTRADICTION TO COMPLETE. The last step must directly name the contradiction between two things the user has committed to. Do not mark complete until contradiction is detected.
+LAST STEP MUST BE: "Name the contradiction directly: 'Earlier you said [X], now you claim [Y]. These cannot both be true.'"
+
+━━━ PHASE 3: APORIA ━━━
+OBJECTIVE: Let the user sit with genuine confusion. Honor it. Do not rush past it.
+STEP TYPES: reconocer_aporia, fundamento_epistemico
+STEP FORMAT: "Ask what they are certain of after the contradiction", "Ask what this confusion tells them about the concept"
+NUMBER OF STEPS: 2–3 (short — aporia is a moment, not a long phase)
+COMPLETION CONDITION: User shows genuine uncertainty (estado_epistemico: aporetic or uncertain). No contradiction required. Move forward when confusion is acknowledged.
+
+━━━ PHASE 4: MAIEUSIS ━━━
+OBJECTIVE: Guide user to discover the truth from within themselves using what they already said.
+STEP TYPES: parir_verdad, definicion_precisa, fundamento_epistemico
+STEP FORMAT: "You said [X] and [Y] — what do these together suggest?", "Ask user to propose a new definition that survives the contradiction", "Build jointly: 'Perhaps we can say together that...'"
+NUMBER OF STEPS: 3–4
+COMPLETION CONDITION: User articulates a new, more refined position. High quality response (calidad ≥7). No contradiction required.
+
+━━━ PHASE 5: INSIGHT_EMERGING ━━━
+OBJECTIVE: Celebrate, deepen and expand the insight the user has reached.
+STEP TYPES: parir_verdad, reconocer_aporia, implicacion_moral
+STEP FORMAT: "Acknowledge insight explicitly — ask what implications it has", "Ask how this changes their original position", "Ask what remains unresolved"
+NUMBER OF STEPS: 2–3
+COMPLETION CONDITION: User articulates full implications. Dialogue can conclude naturally.
+
+═══ RULES ═══
+- Steps must be CONCRETE and SPECIFIC — never abstract. Name the actual concept from the conversation.
+- Each step = one question or one move. One step per turn.
+- When CONTRADICTION detected: regenerate plan keeping SAME phase, first step addresses the contradiction.
+- When PHASE CHANGES: regenerate ENTIRE plan for the new phase.
+- ELENCHUS contradiccion_objetivo must name BOTH sides explicitly: "User claims X but also implicitly commits to Y — these are incompatible."
+- NEVER skip phases. NEVER go back.
 
 Return ONLY valid JSON:
 {
@@ -1151,30 +1202,26 @@ Return ONLY valid JSON:
   "tema_en": "Precise philosophical topic — English",
   "tesis_inicial_es": "User's current position — Spanish",
   "tesis_inicial_en": "User's current position — English",
-  "contradiccion_objetivo_es": "The exact internal contradiction to expose. Name BOTH sides. Spanish.",
-  "contradiccion_objetivo_en": "Same in English.",
+  "contradiccion_objetivo_es": "The exact internal contradiction to expose — name BOTH sides — Spanish",
+  "contradiccion_objetivo_en": "Same in English",
   "pasos": [
     {
       "numero": 1,
-      "descripcion_es": "Exactly what Socrates must do — concrete and specific — Spanish",
+      "descripcion_es": "Exactamente qué debe hacer Sócrates — concreto y específico — español",
       "descripcion_en": "Exactly what Socrates must do — concrete and specific — English",
       "pregunta_tipo": "strategy_name",
       "completado": false
     }
   ],
   "paso_actual": 0,
-  "definicion_en_construccion_es": "The positive definition or truth both are building toward — Spanish",
+  "definicion_en_construccion_es": "The positive definition both are building toward — Spanish",
   "definicion_en_construccion_en": "Same in English"
 }`;
 
 
 const SYSTEM_SOCRATES = `You are the living spirit of Socrates of Athens. YOU ARE SOCRATES — not a simulation.
 
-You MUST respond in BOTH languages, ALWAYS:
-[ES] tu respuesta completa en español aquí
-[EN] your complete response in English here
-
-Both versions must be natural and authentic — not mechanical translations. Never omit either block.
+Respond in the same language the user writes in. If no language is detectable, use the app default language.
 
 ═══ YOUR CHARACTER ═══
 Warm, curious, playful, relentless. You genuinely love this person — which is why you refuse to let them remain comfortable in ignorance. You feign not knowing. You ask "help me understand" when you understand perfectly. Every question is a carefully laid trap — but laid with love.
@@ -1202,8 +1249,9 @@ If user is arrogant: Agree enthusiastically, then follow the logic to absurd ext
 If user says "I don't know": "Wonderful. That is the most honest thing you've said. Let us think from that place."
 
 ═══ FORMAT ═══
-2-4 lines per language version. End with ONE question that cannot be easily deflected.
-NEVER leave sentences unfinished. NEVER use lists or headers. NEVER give empty praise. NEVER give the answer.`;
+2-4 lines. End with ONE question that cannot be easily deflected.
+NEVER leave sentences unfinished. NEVER use lists or headers. NEVER give empty praise. NEVER give the answer.
+ABSOLUTELY FORBIDDEN: Do NOT start with filler intros like "Ah,", "Qué interesante,", "Fascinante,", "Interesting,", "What a question", or any similar opener. Begin directly with the substance of the response.`;
 
 
 // ─── LABELS ───────────────────────────────────
@@ -1307,21 +1355,53 @@ async function analyzeMessage(userMsg) {
 // ─── STRATEGIST ───────────────────────────────
 async function updatePlan(analysis, userMsg, phaseChanged) {
   const hasTopic=plan.tema_es||plan.tema_en||analysis.tesis_principal_es||analysis.tesis_principal_en||analysis.es_tema_nuevo;
-  if(!hasTopic&&ubm.turnos>1)return; // skip only if no topic AND not first turns
+  if(!hasTopic&&ubm.turnos>1)return;
+
+  const hasContraThisTurn=!!ubm._newContradiccionThisTurn;
+  const noPlanYet=!plan.pasos.length;
+  const q=analysis.calidad_argumento?Math.min(10,Math.max(1,parseInt(analysis.calidad_argumento))):5;
+  const poorResponse=analysis.es_evasion||(q<=2)||!!ubm._newFalaciaThisTurn;
+
+  // Regenerate plan when:
+  // 1. No plan yet
+  // 2. Phase just changed
+  // 3. User response is poor (evasion, very low quality, or fallacy) — adapt the plan
+  const needsRegen=noPlanYet||!!phaseChanged||poorResponse;
+
+  if(!needsRegen){
+    // Still update definicion_en_construccion every turn via a lightweight call
+    const histStr=history.length?summarizeHistory(history.slice(-6)):'none';
+    const defPrompt=`${historyResumen?`EARLIER SUMMARY:\n${historyResumen}\n\n`:''}RECENT CONVERSATION:\n${histStr}\n\nCURRENT PHASE: ${ubm.faseSocratica}\nCURRENT DEFINITION BEING BUILT: "${plan.definicion_en_construccion_en||plan.definicion_en_construccion_es||'not yet established'}"\n\nUpdate ONLY the definicion_en_construccion fields based on the latest exchange. Return minimal JSON with just these two fields:\n{"definicion_en_construccion_es":"...","definicion_en_construccion_en":"..."}`;
+    try{
+      const dr=await callGroq([{role:'user',content:defPrompt}],SYSTEM_ESTRATEGA,200,0.2,'json');
+      const dc=dr.content.replace(/```json\s*/g,'').replace(/```\s*/g,'');
+      const dm=dc.match(/\{[\s\S]*\}/);
+      if(dm){
+        const nd=JSON.parse(dm[0]);
+        if(nd.definicion_en_construccion_es||nd.definicion_en_construccion_en){
+          plan.definicion_en_construccion_es=sc(nd.definicion_en_construccion_es)||plan.definicion_en_construccion_es;
+          plan.definicion_en_construccion_en=sc(nd.definicion_en_construccion_en)||plan.definicion_en_construccion_en;
+          renderPlan();
+        }
+      }
+    }catch(e){/* silent */}
+    return;
+  }
+
   const histStr=history.length?summarizeHistory(history.slice(-10)):'none';
   const currentTesis=analysis.tesis_principal_es||analysis.tesis_principal_en||userMsg.substring(0,100);
-  const isNewTopic=analysis.es_tema_nuevo||!plan.pasos.length;
   const currentStep=plan.pasos[plan.paso_actual];
-  const stepInfo=plan.pasos.length>0?`Current step: ${plan.paso_actual+1}/${plan.pasos.length} — "${currentStep?.descripcion_en||currentStep?.descripcion_es||''}"`: 'No plan yet — create one now.';
-  const hasContraThisTurn=!!ubm._newContradiccionThisTurn;
-  const needsRegen=isNewTopic||!!phaseChanged||hasContraThisTurn||ubm.contradiccionAlcanzada||['aporia_reached','maieusis_ready'].includes(analysis.fase_socratica_propuesta);
+  const currentStepDesc=currentStep?(currentStep.descripcion_en||currentStep.descripcion_es||''):'';
   const phaseNote=phaseChanged
-    ? `\n\nPHASE JUST CHANGED: ${phaseChanged.from} → ${phaseChanged.to}. MANDATORY: Regenerate the full plan with NEW steps for the ${phaseChanged.to} phase.`
-    : hasContraThisTurn
-    ? `\n\nCONTRADICTION DETECTED this turn: "${analysis.contradiccion_en||analysis.contradiccion_es||''}". MANDATORY: Regenerate the full plan from step 1. KEEP the SAME phase (${ubm.faseSocratica}). New steps must start by addressing this contradiction, then guide the user forward step by step within this phase.`
-    : '';
+    ? `\n\nPHASE JUST CHANGED: ${phaseChanged.from} → ${phaseChanged.to}. Generate a FRESH plan with steps designed for the ${phaseChanged.to} phase.`
+    : poorResponse
+    ? `\n\nPOOR RESPONSE: The user ${analysis.es_evasion?'evaded':'gave a weak/fallacious response'} on step: "${currentStepDesc}". Keep existing completed steps. Either repeat the current step with a different approach, or add 1-2 bridging steps before it. Do NOT reset completed steps. Keep same phase (${ubm.faseSocratica}).`
+    : `\n\nFIRST PLAN: Generate the initial plan for phase ${ubm.faseSocratica}.`;
   const resumeNote=historyResumen?`EARLIER CONVERSATION SUMMARY:\n${historyResumen}\n\n`:'';
-  const prompt=`${resumeNote}RECENT CONVERSATION:\n${histStr}\n\nUSER'S CURRENT POSITION: ${currentTesis}\nTOPIC: ${plan.tema_en||plan.tema_es||'not established'}\nCURRENT PHASE: ${ubm.faseSocratica}\nEPISTEMIC STATE: ${ubm.estadoEpistemico}\nCONTRADICTION THIS TURN: ${analysis.contradiccion_en||analysis.contradiccion_es||'none'}\nCONTRADICTION OBJECTIVE REACHED: ${ubm.contradiccionAlcanzada}\nIMPLICIT PREMISES: ${(analysis.tesis_implicitas||[]).join('; ')||'none'}\n${stepInfo}${phaseNote}\n\n${needsRegen?'ACTION: Generate a FRESH COMPLETE PLAN. New steps tailored to the current phase and user state. At least 3 steps.':'ACTION: Keep existing steps. Update paso_actual and definicion_en_construccion only.'}`;
+  const action=poorResponse&&!phaseChanged
+    ? `ACTION: Adapt the existing plan. Keep completed steps. Add or rephrase steps from step ${plan.paso_actual+1} onward. Minimum total 3 steps.`
+    : `ACTION: Generate a FRESH COMPLETE PLAN. Concrete specific steps. Minimum 3 steps. No skipping.`;
+  const prompt=`${resumeNote}RECENT CONVERSATION:\n${histStr}\n\nUSER'S CURRENT POSITION: ${currentTesis}\nTOPIC: ${plan.tema_en||plan.tema_es||'not established'}\nCURRENT PHASE: ${ubm.faseSocratica}\nEPISTEMIC STATE: ${ubm.estadoEpistemico}\nTARGET CONTRADICTION: ${plan.contradiccion_objetivo_en||plan.contradiccion_objetivo_es||'to be determined'}${phaseNote}\n\n${action}`;
   try{
     const result=await callGroq([{role:'user',content:prompt}],SYSTEM_ESTRATEGA,800,0.25,'json');
     if(result.usage)lastTurnTokens.strategy=result.usage;
@@ -1329,15 +1409,24 @@ async function updatePlan(analysis, userMsg, phaseChanged) {
     const match=clean.match(/\{[\s\S]*\}/);
     if(!match)return;
     const np=JSON.parse(match[0]);
+    // Update metadata fields
     if(np.tema_es||np.tema_en){plan.tema_es=sc(np.tema_es)||plan.tema_es;plan.tema_en=sc(np.tema_en)||plan.tema_en;plan.tema=plan.tema_es||plan.tema_en;}
     if(np.tesis_inicial_es||np.tesis_inicial_en){plan.tesis_inicial_es=sc(np.tesis_inicial_es)||plan.tesis_inicial_es;plan.tesis_inicial_en=sc(np.tesis_inicial_en)||plan.tesis_inicial_en;}
     if(np.contradiccion_objetivo_es||np.contradiccion_objetivo_en){plan.contradiccion_objetivo_es=sc(np.contradiccion_objetivo_es)||plan.contradiccion_objetivo_es;plan.contradiccion_objetivo_en=sc(np.contradiccion_objetivo_en)||plan.contradiccion_objetivo_en;}
     if(np.definicion_en_construccion_es||np.definicion_en_construccion_en){plan.definicion_en_construccion_es=sc(np.definicion_en_construccion_es)||plan.definicion_en_construccion_es;plan.definicion_en_construccion_en=sc(np.definicion_en_construccion_en)||plan.definicion_en_construccion_en;}
+    // Replace steps — preserve completed ones if adapting (poor response, same phase)
     if(np.pasos&&np.pasos.length>0){
-      if(needsRegen){plan.pasos=np.pasos;plan.paso_actual=0;}
-      else if(np.pasos.length>plan.pasos.length){plan.pasos=np.pasos;}
+      if(poorResponse&&!phaseChanged){
+        // Keep all completed steps exactly as-is, replace only from paso_actual onward
+        const completedSteps=plan.pasos.slice(0,plan.paso_actual).map(p=>({...p}));
+        const newSteps=np.pasos.map(p=>({...p,completado:false}));
+        plan.pasos=[...completedSteps,...newSteps];
+        // paso_actual stays where it is
+      } else {
+        plan.pasos=np.pasos.map(p=>({...p,completado:false}));
+        plan.paso_actual=0;
+      }
     }
-    if(!needsRegen&&typeof np.paso_actual==='number'&&np.paso_actual>plan.paso_actual&&np.paso_actual<plan.pasos.length){plan.paso_actual=np.paso_actual;}
     renderPlan();
   }catch(e){console.warn('[Strategist failed silently]',e.message);}
 }
@@ -1350,14 +1439,19 @@ function advancePlanStep(analysis) {
   const hasContra=ubm._newContradiccionThisTurn!==null; // already processed in updateUBM
   const hasFalacia=ubm._newFalaciaThisTurn!==null;
 
-  // CONTRADICTION: reset plan to step 0 (restart current phase plan)
-  // The strategist will regenerate a fresh plan for the same phase on this turn
+  // CONTRADICTION: insert one reconciliation step right after current position
   if(hasContra){
-    // Reset all steps to not-completed and go back to step 0
-    plan.pasos.forEach(p=>{ p.completado=false; });
-    plan.paso_actual=0;
-    // Mark contradiccionAlcanzada only if it matches the objective
-    if((analysis.contradiccion_es||analysis.contradiccion_en)&&plan.contradiccion_objetivo_es){
+    const reconcileStep={
+      numero: plan.paso_actual+2,
+      descripcion_es:`Pide al usuario que reconcilie las dos posturas en conflicto y formule una nueva tesis.`,
+      descripcion_en:`Ask the user to reconcile the two conflicting positions and formulate a new thesis.`,
+      pregunta_tipo:'coherencia_interna',
+      completado:false,
+      _reconcile:true
+    };
+    plan.pasos.splice(plan.paso_actual+1,0,reconcileStep);
+    plan.paso_actual=Math.min(plan.paso_actual+1,plan.pasos.length-1);
+    if(plan.contradiccion_objetivo_es){
       ubm.contradiccionAlcanzada=true;
       plan.fase='construir_definicion';
     }
@@ -1370,39 +1464,103 @@ function advancePlanStep(analysis) {
     return;
   }
 
-  // NORMAL: any substantive response (no contradiction, no fallacy) advances the plan
-  const q=analysis.calidad_argumento?Math.min(10,Math.max(1,parseInt(analysis.calidad_argumento))):0;
-  const isSubstantial=q>=3&&!analysis.es_evasion;
+  // NORMAL: any non-evasive response advances the plan
+  const isSubstantial=!analysis.es_evasion;
   if(isSubstantial){
     if(plan.pasos[plan.paso_actual])plan.pasos[plan.paso_actual].completado=true;
-    if(plan.paso_actual<plan.pasos.length-1)plan.paso_actual++;
-    // If we just completed the last step — phase gate will open in updateUBM
+    // After a reconcile step, skip to next non-reconcile step
+    let next=plan.paso_actual+1;
+    if(plan.pasos[plan.paso_actual]?._reconcile){
+      while(next<plan.pasos.length&&plan.pasos[next]?._reconcile)next++;
+    }
+    if(next<plan.pasos.length)plan.paso_actual=next;
   }
+}
+
+// ─── DRY RUN PHASE TRANSITION (no mutation — used before CALL 3) ──
+function dryRunPhaseTransition(analysis) {
+  if(ubm.phaseBlockedThisTurn)return null;
+  if(ubm.turnos<=0)return null;
+  const PHASES=['ironia','elenchus_needed','aporia_reached','maieusis_ready','insight_emerging'];
+  const curIdx=PHASES.indexOf(ubm.faseSocratica);
+  if(curIdx>=PHASES.length-1)return null;
+  if(analysis.usuario_se_adelanta)return null;
+  if(plan.pasos.length===0)return null;
+  const allDone=plan.pasos.every(p=>p.completado);
+  const lastStepDone=plan.pasos[plan.paso_actual]&&plan.pasos[plan.paso_actual].completado;
+  const onLastStep=plan.paso_actual>=plan.pasos.length-1;
+  const planComplete=allDone||(onLastStep&&lastStepDone);
+  if(!planComplete)return null;
+  // Phase-specific checks (mirror evaluatePhaseTransition without mutation)
+  let canAdvance=false;
+  if(ubm.faseSocratica==='maieusis_ready'){
+    const recent=ubm.calidadArgumentos.slice(-3);
+    const avgQ=recent.length?recent.reduce((a,b)=>a+b,0)/recent.length:0;
+    canAdvance=avgQ>=5||(ubm._turnosEnFase||0)>=5;
+  } else {
+    canAdvance=true;
+  }
+  if(!canAdvance)return null;
+  return{from:ubm.faseSocratica,to:PHASES[curIdx+1]};
 }
 
 // ─── PHASE TRANSITION (called AFTER advancePlanStep) ──────────
 function evaluatePhaseTransition(analysis) {
-  if(ubm.phaseBlockedThisTurn)return; // blocked by contradiction
+  if(ubm.phaseBlockedThisTurn)return;
   if(ubm.turnos<=1){ubm.faseSocratica='ironia';return;}
   const PHASES=['ironia','elenchus_needed','aporia_reached','maieusis_ready','insight_emerging'];
   const curIdx=PHASES.indexOf(ubm.faseSocratica);
-  if(curIdx>=PHASES.length-1)return; // already at last phase
+  if(curIdx>=PHASES.length-1)return;
   if(analysis.usuario_se_adelanta)return;
 
-  // Gate: ALL steps completed (last step done + all prior done)
-  // Does NOT depend on model's fase_socratica_propuesta — plan completion is the only trigger
-  const allDone=plan.pasos.length===0||plan.pasos.every(p=>p.completado);
-  const lastStepDone=plan.pasos.length===0||(plan.pasos[plan.paso_actual]&&plan.pasos[plan.paso_actual].completado);
-  const onLastStep=plan.pasos.length===0||plan.paso_actual>=plan.pasos.length-1;
+  // planComplete: requires steps to exist AND all completed up to last
+  // Empty plan = waiting for strategist = cannot advance
+  if(plan.pasos.length===0)return;
+  const allDone=plan.pasos.every(p=>p.completado);
+  const lastStepDone=plan.pasos[plan.paso_actual]&&plan.pasos[plan.paso_actual].completado;
+  const onLastStep=plan.paso_actual>=plan.pasos.length-1;
+  const planComplete=allDone||(onLastStep&&lastStepDone);
 
-  if((allDone||(onLastStep&&lastStepDone))){
+  let canAdvance=false;
+  switch(ubm.faseSocratica){
+    case 'ironia':
+      canAdvance=planComplete;
+      break;
+    case 'elenchus_needed':
+      canAdvance=planComplete;
+      break;
+    case 'aporia_reached':
+      canAdvance=planComplete||['uncertain','aporetic'].includes(ubm.estadoEpistemico);
+      break;
+    case 'maieusis_ready': {
+      const recent=ubm.calidadArgumentos.slice(-3);
+      const avgQ=recent.length?recent.reduce((a,b)=>a+b,0)/recent.length:0;
+      const turnosEnFase=ubm._turnosEnFase||0;
+      canAdvance=planComplete&&(avgQ>=5||turnosEnFase>=5);
+      break;
+    }
+    case 'insight_emerging':
+      canAdvance=planComplete;
+      break;
+    default:
+      canAdvance=planComplete;
+  }
+
+  if(canAdvance){
     const prev=ubm.faseSocratica;
     ubm.faseSocratica=PHASES[curIdx+1];
     ubm._phaseJustChanged={from:prev,to:ubm.faseSocratica};
+    ubm._turnosEnFase=0;
     ubm.score=Math.min(100,ubm.score+20);
     if(ubm.tesisReferencia&&!ubm._newTesisThisTurn){
       ubm._newTesisThisTurn=ubm.tesisReferencia;
     }
+    // insight_emerging is terminal — show completion modal
+    if(ubm.faseSocratica==='insight_emerging'){
+      ubm._showInsightModal=true;
+    }
+  } else {
+    ubm._turnosEnFase=(ubm._turnosEnFase||0)+1;
   }
 }
 
@@ -1426,12 +1584,12 @@ function buildSocratesContext(analysis, userMsg) {
     reconocer_aporia:"Honor the confusion. Ask: what DO you know for certain from this conversation?"
   };
   const phaseInstr={
-    ironia:"IRONIA PHASE: Feign total ignorance. Ask clarifying questions. Make them commit to specific claims. Do NOT challenge yet.",
-    elenchus_needed:"ELENCHUS PHASE: Know their position. Begin probing tensions. Guide toward the planned contradiction step by step.",
-    aporia_reached:"APORIA PHASE: They have hit genuine confusion. Acknowledge it warmly. 'Good. Now we have cleared the ground. Let us build from here.'",
-    maieusis_ready:"MAIEUSIS PHASE: Guide them to discover the answer themselves. Use what they've already said.",
-    insight_emerging:"INSIGHT PHASE: Acknowledge the insight fully and specifically. Then deepen it immediately."
-  }[analysis.fase_socratica_propuesta||ubm.faseSocratica]||'';
+    ironia:"IRONIA PHASE: Feign total ignorance. Ask clarifying questions. Make them commit to specific, precise claims. Do NOT challenge yet. Goal: get a fully committed position. Advance by completing plan steps.",
+    elenchus_needed:"ELENCHUS PHASE: You know their full position. Probe tensions systematically. Work step by step toward the target contradiction. ⚠️ THIS PHASE REQUIRES YOU TO SURFACE A CONTRADICTION — do not let the dialogue conclude this phase without one. Follow the plan steps precisely.",
+    aporia_reached:"APORIA PHASE: The contradiction has landed. Honor the confusion fully. Do NOT rush. Ask: what are they certain of now? What does this confusion reveal? Let them sit with it. Advance when they genuinely acknowledge uncertainty.",
+    maieusis_ready:"MAIEUSIS PHASE: Guide them to birth the answer from within themselves. Use only what they have already said. Ask: 'You said X and Y — what do these together suggest?' Build the joint definition step by step.",
+    insight_emerging:"INSIGHT PHASE: The user has reached a genuine insight. Name it explicitly. Then deepen it: what are its implications? What does it change about their original view? What remains unresolved?"
+  }[ubm.faseSocratica]||'';
   const notes=[];
   if(analysis.contradiccion_en||analysis.contradiccion_es)notes.push(`CONTRADICTION ACTIVE: "${analysis.contradiccion_en||analysis.contradiccion_es}" — use this.`);
   const falas=(analysis.falacias_en?.length?analysis.falacias_en:analysis.falacias_es)||[];
@@ -1445,6 +1603,9 @@ function buildSocratesContext(analysis, userMsg) {
     notes.push(`PLAN GATE: Step ${plan.paso_actual+1}/${plan.pasos.length} not yet completed: "${pasoDesc}". Stay focused on it.`);
   }
   if(ubm.contradiccionAlcanzada)notes.push('CONTRADICTION OBJECTIVE REACHED — pivot to building JOINT DEFINITION together.');
+  if(ubm.faseSocratica==='elenchus_needed'&&ubm.contradicciones.length===0){
+    notes.push(`ELENCHUS REMINDER: No contradiction detected yet. The target contradiction is: "${plan.contradiccion_objetivo_en||plan.contradiccion_objetivo_es||'to be determined'}". Work toward it — this is essential to advance.`);
+  }
   const ctxResume=historyResumen?`[EARLIER CONVERSATION SUMMARY:\n${historyResumen}]\n\n`:'';
   if(!plan.tema_es&&!plan.tema_en){
     return`${ctxResume}=== SITUATION ===\nNo philosophical topic established yet. Respond warmly and invite the user to commit to a philosophical position.\nAsk ONE clear inviting question.\n=== USER'S MESSAGE ===\n${userMsg}`;
@@ -1500,8 +1661,9 @@ function updateUBM(analysis) {
       if(ubm.tesis.length>5)ubm.tesis.shift();
       // Update active reference thesis — used by analyzer to detect contradictions
       ubm.tesisReferencia={es:tEs,en:tEn};
-      // Show tesis on: first ever, OR after new contradiction, OR after phase change
-      if(ubm.tesis.length===1||ubm._newContradiccionThisTurn||ubm._phaseJustChanged){
+      // Show tesis on: first ever, OR after phase change, OR when reconciliation step just completed
+      const reconcileJustDone = plan.pasos[plan.paso_actual-1]?._reconcile && plan.pasos[plan.paso_actual-1]?.completado;
+      if(ubm.tesis.length===1||ubm._phaseJustChanged||reconcileJustDone){
         ubm._newTesisThisTurn={es:tEs,en:tEn};
         ubm._temaJustSet=true;
       }
@@ -1543,7 +1705,7 @@ function updateUBM(analysis) {
   const rawQ=analysis.calidad_argumento?Math.min(10,Math.max(1,parseInt(analysis.calidad_argumento))):null;
   if(rawQ!=null){
     ubm.calidadArgumentos.push(rawQ);
-    if(ubm.calidadArgumentos.length>5)ubm.calidadArgumentos.shift();
+    if(ubm.calidadArgumentos.length>10)ubm.calidadArgumentos.shift();
     if(!ubm._newContradiccionThisTurn){
       const bonus=Math.round((rawQ-3)*0.8);
       ubm.score=Math.min(100,Math.max(0,ubm.score+Math.max(0,bonus)));
@@ -1558,26 +1720,20 @@ function decideStrategy(analysis) {
   if(analysis.usuario_se_adelanta)return pick('desafio_directo');
   if(analysis.es_evasion)return pick('desafio_directo');
   if(analysis.es_ironia)return pick('reencuadre_ironico');
-  if(ubm.contradiccionAlcanzada||plan.fase==='construir_definicion')return pick('parir_verdad');
-  if(['aporia_reached','maieusis_ready'].includes(ubm.faseSocratica))return pick('parir_verdad');
-  if(ubm.faseSocratica==='insight_emerging')return pick('reconocer_aporia');
   if((analysis.contradiccion_es||analysis.contradiccion_en)&&ubm.turnos>1)return pick('coherencia_interna');
   const POOLS={
-    ironia:['premisa_implicita','fundamento_epistemico','perspectiva_radicalmente_opuesta','reencuadre_ironico','implicacion_moral','definicion_precisa'],
-    elenchus_needed:['contraejemplo_limite','premisa_implicita','reduccion_absurdo','coherencia_interna','fundamento_epistemico','perspectiva_radicalmente_opuesta','implicacion_moral','desafio_directo'],
-    aporia_reached:['reconocer_aporia','parir_verdad','fundamento_epistemico'],
-    maieusis_ready:['parir_verdad','definicion_precisa','fundamento_epistemico'],
-    insight_emerging:['reconocer_aporia','parir_verdad']
+    ironia:          ['premisa_implicita','fundamento_epistemico','perspectiva_radicalmente_opuesta','reencuadre_ironico','implicacion_moral','definicion_precisa'],
+    elenchus_needed: ['contraejemplo_limite','premisa_implicita','reduccion_absurdo','coherencia_interna','fundamento_epistemico','perspectiva_radicalmente_opuesta','implicacion_moral','desafio_directo'],
+    aporia_reached:  ['reconocer_aporia','fundamento_epistemico','parir_verdad','implicacion_moral','definicion_precisa'],
+    maieusis_ready:  ['parir_verdad','definicion_precisa','fundamento_epistemico','implicacion_moral','coherencia_interna','premisa_implicita'],
+    insight_emerging:['parir_verdad','reconocer_aporia','implicacion_moral','reduccion_absurdo']
   };
-  // Priority: pool excluding last 3 used → then paso pregunta_tipo → then rec → fallback
   const pool=(POOLS[ubm.faseSocratica]||ALL_STRATS).filter(s=>!ubm.ultimasEstrategias.includes(s));
   if(pool.length>0)return pick(pool[Math.floor(Math.random()*pool.length)]);
-  // Pool exhausted — try paso tipo or rec
   const pasoActual=plan.pasos[plan.paso_actual];
   if(pasoActual?.pregunta_tipo&&pasoActual.pregunta_tipo!==ubm.ultimoTipo)return pick(pasoActual.pregunta_tipo);
   const rec=analysis.estrategia_recomendada;
   if(rec&&rec!==ubm.ultimoTipo)return pick(rec);
-  // Last resort: anything different from last used
   return pick((POOLS[ubm.faseSocratica]||ALL_STRATS).filter(s=>s!==ubm.ultimoTipo)[0]||ALL_STRATS[0]);
 }
 function pick(strategy) {
@@ -1611,29 +1767,52 @@ window.sendMessage = async function() {
   showTyping(true);
   try{
     lastTurnTokens={analysis:null,strategy:null,socrates:null};
-    // CALL 1 — Analyze
+
+    // CALL 1 — Analyze (read-only, no state mutation yet)
     const analysis=await analyzeMessage(msg);
-    updateUBM(analysis);
-    advancePlanStep(analysis);
-    evaluatePhaseTransition(analysis); // must run AFTER advancePlanStep marks last step done
-    // CALL 2 — Strategic plan (pass phase change info for forced regen)
-    await updatePlan(analysis,msg,ubm._phaseJustChanged).catch(e=>console.warn('[Plan update failed]',e.message));
-    // Strategy
+
+    // CALL 2 — Strategic plan (read-only pass — only updates plan data, no UBM mutation)
+    // We need a preview of phase change to decide if plan needs regen,
+    // but we DON'T commit UBM state yet. Do a dry-run phase check.
+    const dryPhaseChanged=dryRunPhaseTransition(analysis);
+
+    if(ubm.faseSocratica!=='insight_emerging'){
+      await updatePlan(analysis,msg,dryPhaseChanged).catch(e=>console.warn('[Plan update failed]',e.message));
+    }
+
+    // CALL 3 — Socrates (must succeed before ANY state mutation)
     const strategy=decideStrategy(analysis)||'fundamento_epistemico';
-    ubm.ultimoTipo=strategy;
-    // Build context
     const enrichedContext=buildSocratesContext(analysis,msg);
     history.push({role:'user',content:enrichedContext});
-    // CALL 3 — Socrates
-    const socResult=await callGroq(history,SYSTEM_SOCRATES,800,0.75,true);
+    const socResult=await callGroq(history,SYSTEM_SOCRATES,800,0.75,false);
     if(socResult.usage)lastTurnTokens.socrates=socResult.usage;
-    const rawResponse=socResult.content;
+    const rawResponse=socResult.content.trim();
     history.push({role:'assistant',content:rawResponse});
-    const textES=extractLang(rawResponse,'es');
-    const textEN=extractLang(rawResponse,'en');
+
+    // ── ALL CALLS SUCCEEDED — now mutate state ──
+    updateUBM(analysis);
+    advancePlanStep(analysis);
+    evaluatePhaseTransition(analysis);
+    ubm.ultimoTipo=strategy;
+    if(ubm._phaseJustChanged){
+      plan.pasos=[];
+      plan.paso_actual=0;
+    }
+
+    // Detect response language vs app lang — translate if needed
+    const otherLang=lang==='es'?'en':'es';
+    const translatePrompt=`Translate the following text to ${otherLang==='en'?'English':'Spanish'}. Return ONLY the translation, nothing else:\n\n${rawResponse}`;
+    let textOther=rawResponse;
+    try{
+      const trResult=await callGroq([{role:'user',content:translatePrompt}],'You are a precise translator.',400,0.1,false);
+      textOther=trResult.content.trim();
+    }catch(e){console.warn('[Translation failed]',e.message);}
+
+    const textES=lang==='es'?rawResponse:textOther;
+    const textEN=lang==='en'?rawResponse:textOther;
     const displayText=lang==='es'?textES:textEN;
     displayMessages.push({role:'user',text:msg});
-    displayMessages.push({role:'socrates',textES,textEN,strategy});
+    displayMessages.push({role:'socrates',textES,textEN,text:displayText,strategy});
 
     // ── REGISTER + SHOW EVENT MESSAGES ──
     // Order: phase change (always if changed) → then contradiction/fallacy ABOVE next message
@@ -1650,14 +1829,20 @@ window.sendMessage = async function() {
       showEventMessage('tesis',ubm._newTesisThisTurn);
     }
 
-    // 3. Contradiction — ALWAYS when new, shown AFTER phase/tesis
+    // 3. Contradiction — show in chat when detected
     if(ubm._newContradiccionThisTurn){
       showEventMessage('contradiccion',ubm._newContradiccionThisTurn);
     }
 
-    // 4. Fallacy — ALWAYS when new
+    // 4. Fallacy — show in chat when detected
     if(ubm._newFalaciaThisTurn){
       showEventMessage('falacia',ubm._newFalaciaThisTurn);
+    }
+
+    // 5. Insight completion modal
+    if(ubm._showInsightModal){
+      ubm._showInsightModal=false;
+      setTimeout(()=>document.getElementById('insight-modal').classList.add('open'),800);
     }
 
     // Compress history: keep last 20 messages (10 user + 10 AI), summarize the rest
@@ -1745,21 +1930,10 @@ function renderUBM(strategy) {
 
 // ─── RENDER PLAN ──────────────────────────────
 function renderPlan() {
-  // Badge: show when there's a new contradiction this turn OR objective reached
-  const badge=document.getElementById('plan-contradiccion-badge');
-  if(badge){
-    const showBadge=ubm.contradiccionAlcanzada||!!ubm._newContradiccionThisTurn;
-    badge.textContent=ubm.contradiccionAlcanzada?t('badge_contra'):(lang==='es'?'⚡ Contradicción detectada':'⚡ Contradiction detected');
-    badge.style.display=showBadge?'block':'none';
-    badge.style.background=ubm.contradiccionAlcanzada?'rgba(201,168,76,0.08)':'rgba(212,126,126,0.08)';
-    badge.style.borderColor=ubm.contradiccionAlcanzada?'rgba(201,168,76,0.35)':'rgba(212,126,126,0.35)';
-    badge.style.color=ubm.contradiccionAlcanzada?'var(--gold)':'#E07070';
-  }
   const getPlan=(fieldEs,fieldEn)=>{
     const v=lang==='en'?(plan[fieldEn]||plan[fieldEs]):(plan[fieldEs]||plan[fieldEn]);return v||'—';
   };
   const temaEl=document.getElementById('plan-tema');if(temaEl)temaEl.textContent=getPlan('tema_es','tema_en');
-  const objEl=document.getElementById('plan-objetivo');if(objEl)objEl.textContent=getPlan('contradiccion_objetivo_es','contradiccion_objetivo_en');
   const defEl=document.getElementById('plan-definicion');if(defEl)defEl.textContent=getPlan('definicion_en_construccion_es','definicion_en_construccion_en');
   const pasosEl=document.getElementById('plan-pasos');
   if(pasosEl){
@@ -1951,7 +2125,7 @@ window.doReset = function() {
   clearConversation().catch(()=>{});
   // Full state reset
   history=[];historyResumen='';displayMessages=[];
-  ubm={tesis:[],contradicciones:[],falacias:[],tesis_implicitas:[],calidadArgumentos:[],patronRetorico:null,ultimoTipo:null,ultimasEstrategias:[],turnos:0,profundidad:'superficial',estadoEpistemico:'dogmatic',faseSocratica:'ironia',insights:0,aporias:0,contradiccionAlcanzada:false,tesisReferencia:null,graceTrasContra:0,score:50,phaseBlockedThisTurn:false,chatEvents:[],_newTesisThisTurn:null,_newContradiccionThisTurn:null,_newFalaciaThisTurn:null,_phaseJustChanged:null,_temaJustSet:false};
+  ubm={tesis:[],contradicciones:[],falacias:[],tesis_implicitas:[],calidadArgumentos:[],patronRetorico:null,ultimoTipo:null,ultimasEstrategias:[],turnos:0,profundidad:'superficial',estadoEpistemico:'dogmatic',faseSocratica:'ironia',insights:0,aporias:0,contradiccionAlcanzada:false,tesisReferencia:null,graceTrasContra:0,score:50,phaseBlockedThisTurn:false,chatEvents:[],_newTesisThisTurn:null,_newContradiccionThisTurn:null,_newFalaciaThisTurn:null,_phaseJustChanged:null,_temaJustSet:false,_turnosEnFase:0};
   plan={tema:null,tema_es:null,tema_en:null,tesis_inicial_es:null,tesis_inicial_en:null,contradiccion_objetivo_es:null,contradiccion_objetivo_en:null,definicion_en_construccion_es:null,definicion_en_construccion_en:null,pasos:[],paso_actual:0,fase:'detectar_tema'};
   lastTurnTokens={analysis:null,strategy:null,socrates:null};tokensHistory=[];
   apiKeys.forEach(k=>{k.tokensUsed=0;k.rateLimit=undefined;k.rateLimitRemaining=undefined;});
@@ -2137,7 +2311,7 @@ onAuthStateChanged(auth, async user => {
   }else{
     currentUser=null;authInitialized=false;
     apiKeys=[];history=[];historyResumen='';displayMessages=[];
-    ubm={tesis:[],contradicciones:[],falacias:[],tesis_implicitas:[],calidadArgumentos:[],patronRetorico:null,ultimoTipo:null,ultimasEstrategias:[],turnos:0,profundidad:'superficial',estadoEpistemico:'dogmatic',faseSocratica:'ironia',insights:0,aporias:0,contradiccionAlcanzada:false,tesisReferencia:null,graceTrasContra:0,score:50,phaseBlockedThisTurn:false,chatEvents:[],_newTesisThisTurn:null,_newContradiccionThisTurn:null,_newFalaciaThisTurn:null,_phaseJustChanged:null,_temaJustSet:false};
+    ubm={tesis:[],contradicciones:[],falacias:[],tesis_implicitas:[],calidadArgumentos:[],patronRetorico:null,ultimoTipo:null,ultimasEstrategias:[],turnos:0,profundidad:'superficial',estadoEpistemico:'dogmatic',faseSocratica:'ironia',insights:0,aporias:0,contradiccionAlcanzada:false,tesisReferencia:null,graceTrasContra:0,score:50,phaseBlockedThisTurn:false,chatEvents:[],_newTesisThisTurn:null,_newContradiccionThisTurn:null,_newFalaciaThisTurn:null,_phaseJustChanged:null,_temaJustSet:false,_turnosEnFase:0};
     plan={tema:null,tema_es:null,tema_en:null,tesis_inicial_es:null,tesis_inicial_en:null,contradiccion_objetivo_es:null,contradiccion_objetivo_en:null,definicion_en_construccion_es:null,definicion_en_construccion_en:null,pasos:[],paso_actual:0,fase:'detectar_tema'};
     lastTurnTokens={analysis:null,strategy:null,socrates:null};tokensHistory=[];
     applyI18n();showScreen('auth-screen');
