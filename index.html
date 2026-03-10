@@ -1432,15 +1432,58 @@ async function updatePlan(analysis, userMsg, phaseChanged) {
 }
 
 // ─── ADVANCE PLAN ─────────────────────────────
+// TIMING CONTRACT:
+//   _pendingPlanAdvance stores the analysis of the current turn.
+//   At the END of the turn, advancePlanStep() computes whether the step should
+//   be marked complete, but does NOT write anything to plan yet — it only sets
+//   _pendingPlanAdvance with the decision.
+//   At the START of the NEXT turn, applyPendingPlanAdvance() commits the change
+//   (marks completado + moves paso_actual) and calls renderPlan so the user sees
+//   the pointer move at the moment they send their next message.
+
+let _pendingPlanAdvance = null; // {markComplete: bool, insertReconcile: bool, contradiccionAlcanzada: bool}
+
 function advancePlanStep(analysis) {
+  _pendingPlanAdvance = null;
   if(!plan.pasos.length)return;
   if(analysis.usuario_se_adelanta)return;
 
-  const hasContra=ubm._newContradiccionThisTurn!==null; // already processed in updateUBM
-  const hasFalacia=ubm._newFalaciaThisTurn!==null;
+  const hasContra = ubm._newContradiccionThisTurn !== null;
+  const hasFalacia = ubm._newFalaciaThisTurn !== null;
 
-  // CONTRADICTION: insert one reconciliation step right after current position
   if(hasContra){
+    // Defer: will mark current complete, insert reconcile step, advance pointer
+    _pendingPlanAdvance = {markComplete:true, insertReconcile:true, contradiccionAlcanzada:!!plan.contradiccion_objetivo_es};
+    return;
+  }
+  if(hasFalacia)return;
+  if(analysis.es_evasion)return;
+
+  // Quality gate on last step
+  const isLastStep = plan.paso_actual >= plan.pasos.length - 1;
+  if(isLastStep){
+    const rawQ = analysis.calidad_argumento ? Math.min(10,Math.max(1,parseInt(analysis.calidad_argumento))) : 3;
+    if(rawQ < 4)return;
+  }
+
+  // Defer marking complete — will be applied at start of next turn
+  _pendingPlanAdvance = {markComplete:true, insertReconcile:false, contradiccionAlcanzada:false};
+}
+
+// Called at the very start of the next turn (before analysis), when the user sends
+// their message. Commits any deferred plan advancement, moves the pointer, and
+// evaluates whether the phase should transition now that the step is fully committed.
+function applyPendingPlanAdvance() {
+  if(!_pendingPlanAdvance)return;
+  const {markComplete, insertReconcile, contradiccionAlcanzada, _analysis} = _pendingPlanAdvance;
+  _pendingPlanAdvance = null;
+  if(!plan.pasos.length)return;
+
+  if(markComplete && plan.pasos[plan.paso_actual]){
+    plan.pasos[plan.paso_actual].completado = true;
+  }
+
+  if(insertReconcile){
     const reconcileStep={
       numero: plan.paso_actual+2,
       descripcion_es:`Pide al usuario que reconcilie las dos posturas en conflicto y formule una nueva tesis.`,
@@ -1451,35 +1494,43 @@ function advancePlanStep(analysis) {
     };
     plan.pasos.splice(plan.paso_actual+1,0,reconcileStep);
     plan.paso_actual=Math.min(plan.paso_actual+1,plan.pasos.length-1);
-    if(plan.contradiccion_objetivo_es){
+    if(contradiccionAlcanzada){
       ubm.contradiccionAlcanzada=true;
       plan.fase='construir_definicion';
     }
+    // No phase transition when inserting reconcile — user must answer it first
     return;
   }
 
-  // FALLACY only: do NOT advance — repeat current step (stay put)
-  if(hasFalacia){
-    // No change to paso_actual — Socrates re-asks the same step
-    return;
+  // Normal advance: move pointer to next incomplete step
+  if(markComplete){
+    let next = plan.paso_actual+1;
+    while(next<plan.pasos.length && plan.pasos[next]?.completado) next++;
+    if(next<plan.pasos.length) plan.paso_actual=next;
   }
 
-  // NORMAL: any non-evasive response advances the plan
-  const isSubstantial=!analysis.es_evasion;
-  if(isSubstantial){
-    if(plan.pasos[plan.paso_actual])plan.pasos[plan.paso_actual].completado=true;
-    // After a reconcile step, skip to next non-reconcile step
-    let next=plan.paso_actual+1;
-    if(plan.pasos[plan.paso_actual]?._reconcile){
-      while(next<plan.pasos.length&&plan.pasos[next]?._reconcile)next++;
+  // Now evaluate phase transition — the step is committed, this is the right moment.
+  if(_analysis){
+    evaluatePhaseTransition(_analysis);
+    if(ubm._phaseJustChanged){
+      plan.pasos=[];
+      plan.paso_actual=0;
+      updatePlan(_analysis,'',ubm._phaseJustChanged).catch(e=>console.warn('[Plan regen on phase change failed]',e.message));
+      // Show the phase-change event banner NOW (before Sócrates renders this turn)
+      showEventMessage('phase',ubm._phaseJustChanged);
+      if(ubm._showInsightModal){
+        ubm._showInsightModal=false;
+        setTimeout(()=>document.getElementById('insight-modal').classList.add('open'),800);
+      }
     }
-    if(next<plan.pasos.length)plan.paso_actual=next;
   }
 }
 
 // ─── DRY RUN PHASE TRANSITION (no mutation — used before CALL 3) ──
+// At this point advancePlanPointer() has already run, so plan.paso_actual points to
+// the current active step. planComplete is true only if every step is done.
 function dryRunPhaseTransition(analysis) {
-  if(ubm.phaseBlockedThisTurn)return null;
+  if(ubm.phaseBlockedThisTurn && ubm.faseSocratica!=='elenchus_needed')return null;
   if(ubm.turnos<=0)return null;
   const PHASES=['ironia','elenchus_needed','aporia_reached','maieusis_ready','insight_emerging'];
   const curIdx=PHASES.indexOf(ubm.faseSocratica);
@@ -1487,8 +1538,8 @@ function dryRunPhaseTransition(analysis) {
   if(analysis.usuario_se_adelanta)return null;
   if(plan.pasos.length===0)return null;
   const allDone=plan.pasos.every(p=>p.completado);
-  const lastStepDone=plan.pasos[plan.paso_actual]&&plan.pasos[plan.paso_actual].completado;
   const onLastStep=plan.paso_actual>=plan.pasos.length-1;
+  const lastStepDone=plan.pasos[plan.paso_actual]&&plan.pasos[plan.paso_actual].completado;
   const planComplete=allDone||(onLastStep&&lastStepDone);
   if(!planComplete)return null;
   // Phase-specific checks (mirror evaluatePhaseTransition without mutation)
@@ -1506,7 +1557,9 @@ function dryRunPhaseTransition(analysis) {
 
 // ─── PHASE TRANSITION (called AFTER advancePlanStep) ──────────
 function evaluatePhaseTransition(analysis) {
-  if(ubm.phaseBlockedThisTurn)return;
+  // phaseBlockedThisTurn blocks transitions caused by contradictions — EXCEPT in
+  // elenchus_needed, where surfacing a contradiction IS the completion condition.
+  if(ubm.phaseBlockedThisTurn && ubm.faseSocratica!=='elenchus_needed')return;
   if(ubm.turnos<=1){ubm.faseSocratica='ironia';return;}
   const PHASES=['ironia','elenchus_needed','aporia_reached','maieusis_ready','insight_emerging'];
   const curIdx=PHASES.indexOf(ubm.faseSocratica);
@@ -1520,6 +1573,14 @@ function evaluatePhaseTransition(analysis) {
   const lastStepDone=plan.pasos[plan.paso_actual]&&plan.pasos[plan.paso_actual].completado;
   const onLastStep=plan.paso_actual>=plan.pasos.length-1;
   const planComplete=allDone||(onLastStep&&lastStepDone);
+
+  if(!planComplete)return;
+
+  // LAST-STEP QUALITY GATE: block phase transition on evasion or fallacy.
+  // NOTE: contradictions do NOT block — in elenchus_needed a contradiction is
+  // exactly what completes the phase. In other phases it is handled by phaseBlockedThisTurn.
+  if(ubm._newFalaciaThisTurn)return;
+  if(analysis.es_evasion)return;
 
   let canAdvance=false;
   switch(ubm.faseSocratica){
@@ -1661,12 +1722,9 @@ function updateUBM(analysis) {
       if(ubm.tesis.length>5)ubm.tesis.shift();
       // Update active reference thesis — used by analyzer to detect contradictions
       ubm.tesisReferencia={es:tEs,en:tEn};
-      // Show tesis on: first ever, OR after phase change, OR when reconciliation step just completed
-      const reconcileJustDone = plan.pasos[plan.paso_actual-1]?._reconcile && plan.pasos[plan.paso_actual-1]?.completado;
-      if(ubm.tesis.length===1||ubm._phaseJustChanged||reconcileJustDone){
-        ubm._newTesisThisTurn={es:tEs,en:tEn};
-        ubm._temaJustSet=true;
-      }
+      // Show tesis in chat whenever a new (non-duplicate) thesis is detected
+      ubm._newTesisThisTurn={es:tEs,en:tEn};
+      ubm._temaJustSet=true;
     }
   }
 
@@ -1768,6 +1826,13 @@ window.sendMessage = async function() {
   try{
     lastTurnTokens={analysis:null,strategy:null,socrates:null};
 
+    // Apply any deferred plan advancement from the previous turn.
+    // This marks the previous step complete and moves the pointer to the next step
+    // NOW — at the moment the user sends their message — so the panel updates
+    // before Sócrates responds, not after.
+    applyPendingPlanAdvance();
+    renderPlan();
+
     // CALL 1 — Analyze (read-only, no state mutation yet)
     const analysis=await analyzeMessage(msg);
 
@@ -1792,12 +1857,10 @@ window.sendMessage = async function() {
     // ── ALL CALLS SUCCEEDED — now mutate state ──
     updateUBM(analysis);
     advancePlanStep(analysis);
-    evaluatePhaseTransition(analysis);
+    // Phase transition is evaluated at the START of the next turn (inside
+    // applyPendingPlanAdvance) so the current step is fully committed first.
+    if(_pendingPlanAdvance) _pendingPlanAdvance._analysis = analysis;
     ubm.ultimoTipo=strategy;
-    if(ubm._phaseJustChanged){
-      plan.pasos=[];
-      plan.paso_actual=0;
-    }
 
     // Detect response language vs app lang — translate if needed
     const otherLang=lang==='es'?'en':'es';
@@ -1819,10 +1882,7 @@ window.sendMessage = async function() {
     // Phase change is ALWAYS shown (no suppression). Falacia/contra shown whenever detected.
     // Tesis shown on topic start or post-aporia
 
-    // 1. Phase change — ALWAYS show when it happened (FIRST, before penalties)
-    if(ubm._phaseJustChanged){
-      showEventMessage('phase',ubm._phaseJustChanged);
-    }
+    // Phase change event is now shown inside applyPendingPlanAdvance (next turn).
 
     // 2. Tesis — topic start or post-aporia
     if(ubm._newTesisThisTurn){
@@ -1839,11 +1899,7 @@ window.sendMessage = async function() {
       showEventMessage('falacia',ubm._newFalaciaThisTurn);
     }
 
-    // 5. Insight completion modal
-    if(ubm._showInsightModal){
-      ubm._showInsightModal=false;
-      setTimeout(()=>document.getElementById('insight-modal').classList.add('open'),800);
-    }
+    // 5. Insight completion modal — handled in applyPendingPlanAdvance when phase changes
 
     // Compress history: keep last 20 messages (10 user + 10 AI), summarize the rest
     const MAX_HIST=20;
@@ -1942,7 +1998,7 @@ function renderPlan() {
       pasosEl.innerHTML='';
       plan.pasos.forEach((paso,i)=>{
         const isLast=i===plan.pasos.length-1;
-        const isDone=paso.completado||i<plan.paso_actual;
+        const isDone=paso.completado;
         // On last step: if completed, show as done (not current) even if paso_actual points here
         const isCurrent=i===plan.paso_actual&&!isDone;
         const desc=lang==='en'?(paso.descripcion_en||paso.descripcion_es||''):(paso.descripcion_es||paso.descripcion_en||'');
@@ -2124,7 +2180,7 @@ window.doReset = function() {
   // Clear Firebase
   clearConversation().catch(()=>{});
   // Full state reset
-  history=[];historyResumen='';displayMessages=[];
+  history=[];historyResumen='';displayMessages=[];_pendingPlanAdvance=null;
   ubm={tesis:[],contradicciones:[],falacias:[],tesis_implicitas:[],calidadArgumentos:[],patronRetorico:null,ultimoTipo:null,ultimasEstrategias:[],turnos:0,profundidad:'superficial',estadoEpistemico:'dogmatic',faseSocratica:'ironia',insights:0,aporias:0,contradiccionAlcanzada:false,tesisReferencia:null,graceTrasContra:0,score:50,phaseBlockedThisTurn:false,chatEvents:[],_newTesisThisTurn:null,_newContradiccionThisTurn:null,_newFalaciaThisTurn:null,_phaseJustChanged:null,_temaJustSet:false,_turnosEnFase:0};
   plan={tema:null,tema_es:null,tema_en:null,tesis_inicial_es:null,tesis_inicial_en:null,contradiccion_objetivo_es:null,contradiccion_objetivo_en:null,definicion_en_construccion_es:null,definicion_en_construccion_en:null,pasos:[],paso_actual:0,fase:'detectar_tema'};
   lastTurnTokens={analysis:null,strategy:null,socrates:null};tokensHistory=[];
