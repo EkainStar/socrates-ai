@@ -1036,6 +1036,22 @@ async function callGroq(messages, systemPrompt, maxTokens=300, temperature=0.7, 
     langNote=`\n\nRESPOND IN: ${lang==='es'?'Spanish':'English'} only.`;
   }
   const fullSystem=systemPrompt+langNote;
+  // Reasoning models (gpt-oss) spend part of their token budget on hidden reasoning
+  // before writing the actual answer. Give real headroom above what was requested,
+  // and keep reasoning effort low so it never eats the whole budget or leaks into
+  // the visible content.
+  const effectiveMaxTokens = maxTokens + 500;
+  const body = {
+    model: 'openai/gpt-oss-120b',
+    messages: [{role:'system',content:fullSystem},...messages],
+    max_completion_tokens: effectiveMaxTokens,
+    temperature,
+    reasoning_effort: 'low',
+    reasoning_format: 'hidden'
+  };
+  if(bilingualMode==='json'){
+    body.response_format = { type: 'json_object' };
+  }
   for(let attempt=0;attempt<apiKeys.length+1;attempt++){
     let idx=apiKeys.findIndex(k=>k.status==='active');
     if(idx===-1){
@@ -1047,10 +1063,15 @@ async function callGroq(messages, systemPrompt, maxTokens=300, temperature=0.7, 
     try{
       const response=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',
         headers:{'Content-Type':'application/json','Authorization':`Bearer ${entry.key}`},
-        body:JSON.stringify({model:'openai/gpt-oss-120b',messages:[{role:'system',content:fullSystem},...messages],max_tokens:maxTokens,temperature})});
+        body:JSON.stringify(body)});
       if(response.status===429){exhaustKeyToEnd(idx);saveUserData().catch(()=>{});renderApiKeys();continue;}
       if(response.status===401||response.status===403){apiKeys.splice(idx,1);normalizeKeyStatuses(false);saveUserData().catch(()=>{});renderApiKeys();toast(t('toast_key_inv_removed'),'error');continue;}
-      if(!response.ok){exhaustKeyToEnd(idx);continue;}
+      if(!response.ok){
+        // Surface the real reason a call failed — this is what tells you whether
+        // it's Groq rejecting a param, a model change, or something else entirely.
+        try{ console.error('[Groq API error]', response.status, await response.text()); }catch(_){}
+        exhaustKeyToEnd(idx);continue;
+      }
       const data=await response.json();
       apiKeys[idx].status='active';
       if(data.usage){if(!apiKeys[idx].tokensUsed)apiKeys[idx].tokensUsed=0;apiKeys[idx].tokensUsed+=data.usage.total_tokens||0;}
@@ -1059,7 +1080,11 @@ async function callGroq(messages, systemPrompt, maxTokens=300, temperature=0.7, 
       if(limitTotal)apiKeys[idx].rateLimit=parseInt(limitTotal);
       if(limitRemaining)apiKeys[idx].rateLimitRemaining=parseInt(limitRemaining);
       renderApiKeys();
-      return{content:data.choices[0].message.content,usage:data.usage||null};
+      const content = (data.choices[0].message.content || '').trim();
+      if(!content){
+        console.warn('[Groq] Empty content — likely reasoning-token truncation or a refusal. finish_reason:', data.choices[0].finish_reason, 'full response:', data);
+      }
+      return{content, usage:data.usage||null};
     }catch(e){
       if(e.message==='NO_KEYS'||e.message==='ALL_EXHAUSTED')throw e;
       exhaustKeyToEnd(idx);continue;
@@ -1347,8 +1372,13 @@ async function analyzeMessage(userMsg) {
     if(result.usage)lastTurnTokens.analysis=result.usage;
     const clean=result.content.replace(/```json\s*/g,'').replace(/```\s*/g,'');
     const match=clean.match(/\{[\s\S]*\}/);
-    if(match)return JSON.parse(match[0]);
-  }catch(e){console.error('Analyzer error',e);throw e;}
+    if(match){
+      try{ return JSON.parse(match[0]); }
+      catch(parseErr){ console.warn('[Analyzer] JSON.parse failed, using fallback. Raw content:', result.content); }
+    } else {
+      console.warn('[Analyzer] No JSON object found in response. Raw content:', result.content);
+    }
+  }catch(e){console.error('Analyzer error (network/key issue)',e);throw e;}
   return{tesis_principal_es:null,tesis_principal_en:null,es_tema_nuevo:false,contradiccion_es:null,contradiccion_en:null,falacias_es:[],falacias_en:[],tesis_implicitas:[],concepto_sin_definir:null,profundidad:'superficial',estado_epistemico:'dogmatic',fase_socratica_propuesta:'ironia',es_evasion:false,es_ironia:false,usuario_se_adelanta:false,calidad_argumento:3,patron_retorico_es:'',patron_retorico_en:'',estrategia_recomendada:'fundamento_epistemico'};
 }
 
@@ -1377,12 +1407,16 @@ async function updatePlan(analysis, userMsg, phaseChanged) {
       const dc=dr.content.replace(/```json\s*/g,'').replace(/```\s*/g,'');
       const dm=dc.match(/\{[\s\S]*\}/);
       if(dm){
-        const nd=JSON.parse(dm[0]);
-        if(nd.definicion_en_construccion_es||nd.definicion_en_construccion_en){
+        let nd=null;
+        try{ nd=JSON.parse(dm[0]); }
+        catch(parseErr){ console.warn('[Strategist/def] JSON.parse failed. Raw content:', dr.content); }
+        if(nd&&(nd.definicion_en_construccion_es||nd.definicion_en_construccion_en)){
           plan.definicion_en_construccion_es=sc(nd.definicion_en_construccion_es)||plan.definicion_en_construccion_es;
           plan.definicion_en_construccion_en=sc(nd.definicion_en_construccion_en)||plan.definicion_en_construccion_en;
           renderPlan();
         }
+      } else {
+        console.warn('[Strategist/def] No JSON object found. Raw content:', dr.content);
       }
     }catch(e){/* silent */}
     return;
@@ -1407,8 +1441,13 @@ async function updatePlan(analysis, userMsg, phaseChanged) {
     if(result.usage)lastTurnTokens.strategy=result.usage;
     const clean=result.content.replace(/```json\s*/g,'').replace(/```\s*/g,'');
     const match=clean.match(/\{[\s\S]*\}/);
-    if(!match)return;
-    const np=JSON.parse(match[0]);
+    if(!match){
+      console.warn('[Strategist] No JSON object found in response. Raw content:', result.content);
+      return;
+    }
+    let np=null;
+    try{ np=JSON.parse(match[0]); }
+    catch(parseErr){ console.warn('[Strategist] JSON.parse failed. Raw content:', result.content); return; }
     // Update metadata fields
     if(np.tema_es||np.tema_en){plan.tema_es=sc(np.tema_es)||plan.tema_es;plan.tema_en=sc(np.tema_en)||plan.tema_en;plan.tema=plan.tema_es||plan.tema_en;}
     if(np.tesis_inicial_es||np.tesis_inicial_en){plan.tesis_inicial_es=sc(np.tesis_inicial_es)||plan.tesis_inicial_es;plan.tesis_inicial_en=sc(np.tesis_inicial_en)||plan.tesis_inicial_en;}
